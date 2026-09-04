@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*  PLCBO v3 — tokens
+ *  The shadcn variables are not generic slate here: every one of them is bound to
+ *  the dark cut's palette, so `bg-background` / `text-foreground` in the stock
+ *  shadcn components land on PLCBO colours without a single override.
+ *
+ *  The accent is held at 72% saturation on purpose — 100% is the loudest tell of
+ *  a generated palette. --accent-fill is the deeper step the filled button needs
+ *  for white to clear AA (white on --accent alone is only 3.69:1).
+ */
+@layer base {
+  :root {
+    --background: 240 11% 4%;          /* #08080a */
+    --foreground: 240 10% 96%;         /* #f4f4f6 */
+
+    --card: 240 8% 5%;                 /* #0c0c0e */
+    --card-foreground: 240 10% 96%;
+    --popover: 240 8% 5%;
+    --popover-foreground: 240 10% 96%;
+
+    --primary: 240 10% 96%;
+    --primary-foreground: 240 11% 4%;
+
+    --secondary: 240 8% 8%;            /* #121215 */
+    --secondary-foreground: 240 10% 96%;
+
+    --muted: 240 8% 8%;
+    --muted-foreground: 240 5% 62%;    /* #9a9aa4 */
+
+    --accent: 252 72% 68%;             /* #8a73e8 */
+    --accent-foreground: 240 11% 4%;
+    --accent-fill: 252 72% 62%;        /* #7458e4 — filled button ground */
+
+    --destructive: 0 100% 71%;         /* #ff6b6b */
+    --destructive-foreground: 240 11% 4%;
+
+    --border: 240 3% 12%;              /* rgba(255,255,255,.085) over the ground */
+    --input: 240 3% 12%;
+    --ring: 252 72% 68%;
+
+    --ink: 240 10% 96%;
+    --ink-2: 240 5% 62%;
+    --ink-3: 240 4% 50%;               /* #7a7a85 — 4.72:1, clears AA at 10-11px */
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 96px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.24);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 3px;
+  }
+
+  /* Firefox keeps a default focus ring on top of ours */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@layer components {
+  /* the mono eyebrow — the technical voice, used for labels and credits only */
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3;
+  }
+
+  .shell {
+    @apply mx-auto w-full max-w-[1200px] px-6 sm:px-10 lg:px-16;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* film grain — one tileable SVG noise, no image request */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* Motion is opt-in. Everything below animates transform/opacity/filter only, and
+   all of it collapses to a static frame when the reader asks for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* The pointer is drawn by <Cursor />, so the native one steps aside — but only
+   while that component is actually mounted and driving it. */
+html.cursor-ring,
+html.cursor-ring * {
+  cursor: none;
+}
