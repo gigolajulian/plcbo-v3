@@ -90,6 +90,38 @@ function MarkMetal({ onReady, ...props }: LiquidMetalProps & { onReady: () => vo
   return <LiquidMetal suspendWhenProcessingImage {...props} />;
 }
 
+/**
+ * Nothing about the mask is allowed to take the page down with it.
+ *
+ * `suspendWhenProcessingImage` throws the image load, so a mask that 404s — a bad
+ * path, a bad deploy, a cache miss — rethrows on render and unmounts the whole tree
+ * above it. That shipped once: `/mark.svg` resolved to the domain root on GitHub
+ * Pages instead of the project path, and the site rendered as an empty black
+ * document rather than a hero without a shader in it.
+ *
+ * Caught here, the masked layer simply does not appear. The formation never starts,
+ * so the blob underneath stays up and keeps drawing, and the nav, the CTAs and every
+ * section below carry on. The hero is worse; the site still works.
+ */
+class MetalBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('[hero] the metal mask failed to load; falling back to the blob', error);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
 export interface LiquidMetalHeroProps {
   /** Carried by the mark visually; kept in the DOM for screen readers and search. */
   title: string;
@@ -279,57 +311,59 @@ export default function LiquidMetalHero({
               willChange: 'transform, filter',
             }}
           >
-            <React.Suspense fallback={null}>
-              <MarkMetal
-                {...backdrop}
-                onReady={onReady}
-                image={image}
-                colorBack={CLEAR}
-                colorTint={SILVER}
-                /* contain, not cover: cover crops, and the whole point is the
-                   silhouette. */
-                fit="contain"
-                scale={zoom(1.15, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
-                /* the rise: it comes up from under the fold and settles just above
-                   centre, where the CTA row leaves it room */
-                /* the press also shoves the pattern away from where it landed, so
-                   the churn has a direction rather than just happening everywhere */
-                offsetY={-0.03 + (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip}
-                offsetX={(drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip}
-                /* `contour` is the morph. It is the only parameter that touches the
-                   silhouette rather than the pattern painted over it — the shader
-                   calls it the strength of the distortion on the shape edges — so
-                   run it high and the mask churns into a shapeless body of metal,
-                   walk it down and the mark sets out of it. Everything else here is
-                   the surface: molten and soft on the way in, banded and tight at
-                   rest, which is the difference between plastic and metal. */
-                softness={lerp(0.85, 0.2, formation)}
-                contour={lerp(1, 0.26, formation)}
-                shiftRed={lerp(0.02, 0.12, formation)}
-                shiftBlue={lerp(0.03, 0.16, formation)}
-                rotation={lerp(7, 0, formation)}
-                /* the pointer drives the flow once there is a mark to drive */
-                angle={64 + drift.x * 46 * grip}
-                repetition={lerp(1.5, 3.4, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
-                distortion={
-                  lerp(1, 0.14, formation) +
-                  (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
-                }
-                speed={
-                  reduceMotion || !live
-                    ? 0
-                    : lerp(1.1, 0.42, formation) + drift.energy * 0.3 + drift.pulse * 0.6
-                }
-                frame={reduceMotion ? 8200 : 0}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: markOpacity,
-                }}
-              />
-            </React.Suspense>
+            <MetalBoundary>
+              <React.Suspense fallback={null}>
+                <MarkMetal
+                  {...backdrop}
+                  onReady={onReady}
+                  image={image}
+                  colorBack={CLEAR}
+                  colorTint={SILVER}
+                  /* contain, not cover: cover crops, and the whole point is the
+                     silhouette. */
+                  fit="contain"
+                  scale={zoom(1.15, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
+                  /* the rise: it comes up from under the fold and settles just above
+                     centre, where the CTA row leaves it room */
+                  /* the press also shoves the pattern away from where it landed, so
+                     the churn has a direction rather than just happening everywhere */
+                  offsetY={-0.03 + (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip}
+                  offsetX={(drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip}
+                  /* `contour` is the morph. It is the only parameter that touches the
+                     silhouette rather than the pattern painted over it — the shader
+                     calls it the strength of the distortion on the shape edges — so
+                     run it high and the mask churns into a shapeless body of metal,
+                     walk it down and the mark sets out of it. Everything else here is
+                     the surface: molten and soft on the way in, banded and tight at
+                     rest, which is the difference between plastic and metal. */
+                  softness={lerp(0.85, 0.2, formation)}
+                  contour={lerp(1, 0.26, formation)}
+                  shiftRed={lerp(0.02, 0.12, formation)}
+                  shiftBlue={lerp(0.03, 0.16, formation)}
+                  rotation={lerp(7, 0, formation)}
+                  /* the pointer drives the flow once there is a mark to drive */
+                  angle={64 + drift.x * 46 * grip}
+                  repetition={lerp(1.5, 3.4, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
+                  distortion={
+                    lerp(1, 0.14, formation) +
+                    (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
+                  }
+                  speed={
+                    reduceMotion || !live
+                      ? 0
+                      : lerp(1.1, 0.42, formation) + drift.energy * 0.3 + drift.pulse * 0.6
+                  }
+                  frame={reduceMotion ? 8200 : 0}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: markOpacity,
+                  }}
+                />
+              </React.Suspense>
+            </MetalBoundary>
           </div>
         </div>
 
