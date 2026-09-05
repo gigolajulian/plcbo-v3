@@ -8,6 +8,7 @@ import {
 } from '@paper-design/shaders-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
+import { Mark } from '@/components/mark';
 import { Button } from '@/components/ui/button';
 import { useFormation } from '@/hooks/use-formation';
 import { usePointerDrift } from '@/hooks/use-pointer-drift';
@@ -20,16 +21,16 @@ import { cn } from '@/lib/utils';
  * falls back to its defaults. */
 const backdrop = liquidMetalPresets[2].params;
 
-/* Silver, not violet. colorBack is the ground the metal is lit against and colorTint
- * is burned over the pattern — a near-neutral tint with a hint of cool in it reads as
- * polished steel, where the accent read as painted plastic. The violet accent stays
- * where it belongs: in the rest of the page. */
-const GROUND = '#08080a';
 /* The masked layer's ground is transparent, not the page colour: it is what lets the
  * silhouette have an alpha channel, which is what the extrusion below is built out
  * of. An opaque ground would cast its own rectangle instead of the letter. */
 const CLEAR = 'rgba(8, 8, 10, 0)';
-const SILVER = '#dcdce6';
+
+/* Silver, not violet — the accent read as painted plastic burned through metal, and
+ * it stays where it belongs, in the rest of the page. Deeper than it was: the tint is
+ * the body of the surface, so leaving it near-white left the highlights nowhere to go
+ * and the whole thing read as one flat bright plane. */
+const SILVER = '#c9c9d2';
 
 /** How long the metal takes to gather itself into the mark, once it can. */
 const FORMATION_MS = 6000;
@@ -50,6 +51,34 @@ const HOVER_TILT_Y = 13;
  * only ever approaches its limit, so the turn stays smooth however far the drag
  * runs and never hits a wall. */
 const swing = (px: number, max: number) => max * Math.tanh((px * 0.19) / max);
+
+/* Glass, over metal.
+ *
+ * Four things together, and it stops working if any of them is dropped: a heavy
+ * backdrop blur so the mark behind smears rather than showing through legibly; a
+ * saturation lift so what does come through keeps its colour instead of going grey;
+ * a hairline top-edge inset highlight, which is the specular catch that makes a pane
+ * read as a solid object rather than a translucent rectangle; and a soft drop shadow
+ * so it sits above the metal instead of being painted onto it.
+ *
+ * The two buttons differ only in how much light they hold, which is what keeps the
+ * primary action primary now that neither is a solid fill. */
+const GLASS =
+  'rounded-full border backdrop-blur-2xl backdrop-saturate-150 ' +
+  'transition-[background-color,border-color] duration-300';
+
+const GLASS_PRIMARY =
+  'border-white/25 bg-white/[0.18] text-foreground hover:border-white/40 hover:bg-white/[0.26]';
+
+const GLASS_SECONDARY =
+  'border-white/15 bg-white/[0.07] text-foreground hover:border-white/30 hover:bg-white/[0.13]';
+
+/* The shadows go in a style attribute, not a Tailwind arbitrary value. `shadow-[…]`
+ * with two shadows and rgba() commas inside silently generates nothing — the computed
+ * box-shadow came back as Tailwind's empty default and the specular edge, the part
+ * that does the actual work, was simply absent. */
+const glassShadow = (specular: number, drop: number, spread: number) =>
+  `inset 0 1px 0 rgba(255,255,255,${specular}), 0 ${drop}px ${spread}px rgba(0,0,0,0.45)`;
 
 /**
  * A side wall for a flat shader.
@@ -99,9 +128,10 @@ function MarkMetal({ onReady, ...props }: LiquidMetalProps & { onReady: () => vo
  * Pages instead of the project path, and the site rendered as an empty black
  * document rather than a hero without a shader in it.
  *
- * Caught here, the masked layer simply does not appear. The formation never starts,
- * so the blob underneath stays up and keeps drawing, and the nav, the CTAs and every
- * section below carry on. The hero is worse; the site still works.
+ * Caught here, the hero falls back to the flat mark — the same `Mark` the nav and the
+ * footer draw, so there is no second asset to keep in step. Not the shader, but the
+ * right shape in the right place, and the nav, the CTAs and every section below carry
+ * on regardless.
  */
 class MetalBoundary extends React.Component<
   { children: React.ReactNode },
@@ -114,11 +144,17 @@ class MetalBoundary extends React.Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.error('[hero] the metal mask failed to load; falling back to the blob', error);
+    console.error('[hero] the metal mask failed to load; falling back to the flat mark', error);
   }
 
   render() {
-    return this.state.failed ? null : this.props.children;
+    if (!this.state.failed) return this.props.children;
+
+    return (
+      <div className="absolute inset-0 grid place-items-center">
+        <Mark className="w-[46%] max-w-[560px] text-ink-2" title="PLCBO" />
+      </div>
+    );
   }
 }
 
@@ -141,7 +177,7 @@ export interface LiquidMetalHeroProps {
 export default function LiquidMetalHero({
   title,
   subtitle,
-  image = asset('/mark.svg'),
+  image = asset('/mark-mask.png'),
   primaryCtaLabel,
   secondaryCtaLabel,
   onPrimaryCtaClick,
@@ -194,20 +230,21 @@ export default function LiquidMetalHero({
   const [ready, setReady] = React.useState(false);
   const onReady = React.useCallback(() => setReady(true), []);
 
-  /* 0 = an open field of metal with no shape in it, 1 = the mark. */
+  /* 0 = a shapeless body of metal, 1 = the mark. */
   const formation = useFormation(FORMATION_MS, ready, Boolean(reduceMotion));
-  const settled = formation > 0.999;
 
-  /* The formation is one continuous move on one layer, not a dissolve between two.
-     The masked layer opens with its `contour` at full — the silhouette churned into
-     a shapeless body of metal — and the mark sets out of it as that walks down.
+  /* One layer, one move. There used to be a second `metaballs` layer under this one,
+     covering the moment the mask spends being computed, with a 200ms crossfade
+     between them — and it read as exactly what it was: a different material
+     dissolving into this one. Two shaders cannot hand over invisibly.
 
-     The blob underneath exists only to cover the moment before the mask is ready.
-     It is tuned to the masked layer's opening frame and handed over inside the first
-     fifth of the move, while both are still formless, so the swap has nothing to
-     show. */
-  const fieldOpacity = 1 - ramp(formation, 0.02, 0.2);
-  const markOpacity = ramp(formation, 0, 0.16);
+     So the mask carries the whole opening on its own. It arrives with `contour` at
+     full, which is the only parameter that deforms the silhouette rather than the
+     pattern painted over it, so the letter genuinely churns out of a shapeless mass
+     instead of appearing through a dissolve. This is now a plain fade up from the
+     page ground, slow enough to read as the start of the shot rather than a layer
+     switching on. */
+  const markOpacity = ramp(formation, 0, 0.28);
 
   /* Pointer response is scaled by the formation, so nothing steers the metal until
      there is a mark to steer. */
@@ -273,38 +310,6 @@ export default function LiquidMetalHero({
             hands back no WebGL context at all */}
         <div className="absolute inset-0 bg-background" />
 
-        {/* The blob: no image, so it draws on the first frame, which is its whole
-            job — covering the seconds the masked layer spends turning the SVG into a
-            distance field. `metaballs` is the shader's own liquid mass, so the
-            handover is blob to molten letter rather than field to letter. Unmounted
-            as soon as it has faded out, to hand its WebGL context back rather than
-            idle two of them for the life of the page. */}
-        {!settled && fieldOpacity > 0.001 && (
-          <LiquidMetal
-            {...backdrop}
-            shape="metaballs"
-            colorBack={GROUND}
-            colorTint={SILVER}
-            softness={0.85}
-            repetition={1.5}
-            distortion={1}
-            contour={0.6}
-            shiftRed={0.02}
-            shiftBlue={0.03}
-            fit="cover"
-            scale={lerp(1.5, 1.3, formation)}
-            offsetY={lerp(0.14, 0, formation)}
-            angle={64}
-            speed={live ? 1.1 : 0}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              opacity: fieldOpacity,
-            }}
-          />
-        )}
 
         {/* The mark. With an image the `shape` prop is ignored: the metal fills the
             logo's alpha and everything outside it stays transparent. */}
@@ -343,16 +348,16 @@ export default function LiquidMetalHero({
                      walk it down and the mark sets out of it. Everything else here is
                      the surface: molten and soft on the way in, banded and tight at
                      rest, which is the difference between plastic and metal. */
-                  softness={lerp(0.85, 0.2, formation)}
+                  softness={lerp(0.85, 0.16, formation)}
                   contour={lerp(1, 0.26, formation)}
-                  shiftRed={lerp(0.02, 0.12, formation)}
-                  shiftBlue={lerp(0.03, 0.16, formation)}
+                  shiftRed={lerp(0.02, 0.03, formation)}
+                  shiftBlue={lerp(0.03, 0.04, formation)}
                   rotation={lerp(7, 0, formation)}
                   /* the pointer drives the flow once there is a mark to drive */
                   angle={64 + drift.x * 46 * grip}
-                  repetition={lerp(1.5, 3.4, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
+                  repetition={lerp(1.5, 3.8, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
                   distortion={
-                    lerp(1, 0.14, formation) +
+                    lerp(1, 0.28, formation) +
                     (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
                   }
                   speed={
@@ -398,7 +403,8 @@ export default function LiquidMetalHero({
             <Button
               onClick={onPrimaryCtaClick}
               size="lg"
-              className="h-12 rounded-full bg-foreground px-8 text-[15px] font-medium text-background shadow-2xl transition-colors duration-300 hover:bg-foreground/90"
+              className={cn('h-12 px-8 text-[15px] font-medium', GLASS, GLASS_PRIMARY)}
+              style={{ boxShadow: glassShadow(0.45, 10, 34) }}
             >
               {primaryCtaLabel}
             </Button>
@@ -410,7 +416,8 @@ export default function LiquidMetalHero({
                 onClick={onSecondaryCtaClick}
                 variant="outline"
                 size="lg"
-                className="h-12 rounded-full border-foreground/25 bg-background/50 px-8 text-[15px] font-medium text-foreground backdrop-blur-md transition-colors duration-300 hover:border-foreground/50 hover:bg-background/70 hover:text-foreground"
+                className={cn('h-12 px-8 text-[15px] font-medium', GLASS, GLASS_SECONDARY)}
+                style={{ boxShadow: glassShadow(0.25, 8, 28) }}
               >
                 {secondaryCtaLabel}
               </Button>

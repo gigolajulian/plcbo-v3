@@ -24,7 +24,7 @@ export default function App() {
         <LiquidMetalHero
           title="PLCBO"
           subtitle="Visual identity, photography, film and digital design. Working out of the Bay Area since 2018."
-          image={asset('/mark.svg')}
+          image={asset('/mark-mask.png')}
           primaryCtaLabel="Start a project"
           secondaryCtaLabel="See the work"
           onPrimaryCtaClick={() => scrollTo('connect')}
