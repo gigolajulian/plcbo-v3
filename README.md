@@ -62,11 +62,16 @@ everything outside it stays transparent.
 ### The formation
 
 One continuous move on one layer, not a dissolve between two. The masked layer opens
-blown up far past the viewport — all you see is the inside of the letter, an open
-body of metal with no shape to read — and pulls back over about six seconds until the
-silhouette is the thing you are looking at, softness and turbulence resolving down as
-it lands. Zoom is interpolated **geometrically** (`zoom()`), or the last third of the
-range does all the visible work.
+with its **`contour` at full** and the mark sets out of it over about six seconds as
+that walks down.
+
+`contour` is the whole trick. It is the only parameter that touches the silhouette
+rather than the pattern painted over it — the shader calls it *"strength of the
+distortion on the shape edges"* — so at 1.0 the letter's own outline churns into a
+shapeless body of metal, and walking it to 0.26 lets the mark set out of that. There
+is no second mask and no morph target; the shape deforms itself. `softness`,
+`distortion` and `repetition` ride the same ramp, molten and soft on the way in,
+banded and tight at rest.
 
 Two things make it hold together:
 
@@ -76,10 +81,12 @@ Two things make it hold together:
   everything beneath it. The first cut of this blacked the screen out for two seconds
   mid-load. So the layer sits behind a `<Suspense>` with `suspendWhenProcessingImage`,
   and its mount is what starts the ramp: the two cannot drift apart, on any machine.
-- **The open field underneath exists only to cover that wait.** It is tuned to the
-  masked layer's opening frame and handed over inside the first fifth of the move,
-  while both are still formless, so the swap has nothing to show. It is unmounted
-  outright once faded, rather than idling a second WebGL context for the life of the
+- **The blob underneath exists only to cover that wait.** It carries no image, so it
+  draws on the first frame, and it uses the shader's own `metaballs` shape — a liquid
+  mass, so the handover reads blob to molten letter rather than field to letter. It
+  is tuned to the masked layer's opening frame and handed over inside the first fifth
+  of the move, while both are still formless, so the swap has nothing to show, then
+  unmounted outright rather than idling a second WebGL context for the life of the
   page.
 
 ### Depth, and the pointer
@@ -90,13 +97,25 @@ because the alpha silhouette is what the extrusion is built out of. Three chaine
 continuous side wall rather than three offset copies; a fourth, blurred, keeps the
 whole thing from reading as a sticker.
 
-`usePointerDrift` smooths the cursor into a lagging value with three channels: a
-position, an `energy` that rises while the pointer is over the hero, and a `pulse`
-that spikes on press and decays. Position tilts the plane the shader is drawn on —
-a real `rotateX`/`rotateY` under a `perspective`, so the mark turns to face the
-cursor — and steers `angle`, `repetition` and `distortion`. The pulse nudges the mark
-back and kicks the flow. All of it is multiplied by the formation, so nothing steers
-the metal until there is a mark to steer.
+`usePointerDrift` smooths the cursor into a lagging value with four channels: a
+position, an `energy` that rises while the pointer is over the hero, a `pulse` that
+spikes on press and decays, and a `drag` offset in pixels.
+
+Position tilts the plane the shader is drawn on — a real `rotateX`/`rotateY` under a
+`perspective`, so the mark turns to face the cursor — and steers `angle`,
+`repetition` and `distortion`. The pulse nudges the mark back and kicks the flow.
+Dragging turns it further and *only* turns it: the mark holds its place in the
+composition and swings on the spot, about a degree for every five pixels. Hover and
+drag share one budget — `MAX_TILT`, 30° — with the hover tilt spending a fixed slice
+and `swing()` easing the drag onto whatever is left. `swing()` is a `tanh`, so it
+approaches that ceiling rather than being clamped at it: however hard the mark is
+thrown it never turns more than 30° off-face, and it never hits a wall on the way.
+Letting go walks the angle back rather than snapping it.
+
+The drag is tracked on the window rather than through pointer capture — capture on
+the section would swallow the CTAs' clicks, and a drag that stops the moment the
+cursor leaves the hero is not a drag. All of it is multiplied by the formation, so
+nothing steers the metal until there is a mark to steer.
 
 `Cursor` replaces the pointer with a hollow white ring that fills solid on press.
 Only on a device with a real pointer and only when the reader has not asked for less

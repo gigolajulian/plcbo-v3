@@ -40,6 +40,16 @@ const zoom = (from: number, to: number, t: number) => from * Math.pow(to / from,
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 /** 0 below `from`, 1 above `to`, linear in between. */
 const ramp = (t: number, from: number, to: number) => clamp01((t - from) / (to - from));
+/** The mark never turns further than this off-face, on either axis. */
+const MAX_TILT = 30;
+/** How much of that budget the hover tilt spends; the rest is the drag's to use. */
+const HOVER_TILT_X = 11;
+const HOVER_TILT_Y = 13;
+
+/* Degrees per pixel dragged, eased onto a ceiling rather than clamped at one: tanh
+ * only ever approaches its limit, so the turn stays smooth however far the drag
+ * runs and never hits a wall. */
+const swing = (px: number, max: number) => max * Math.tanh((px * 0.19) / max);
 
 /**
  * A side wall for a flat shader.
@@ -157,14 +167,13 @@ export default function LiquidMetalHero({
   const settled = formation > 0.999;
 
   /* The formation is one continuous move on one layer, not a dissolve between two.
-     The masked layer opens blown up far past the viewport, so all that is on screen
-     is the inside of the letter — an open body of metal with no shape to read — and
-     pulls back until the silhouette is the thing you are looking at.
+     The masked layer opens with its `contour` at full — the silhouette churned into
+     a shapeless body of metal — and the mark sets out of it as that walks down.
 
-     The open field underneath exists only to cover the moment before the mask is
-     ready. It is tuned to the masked layer's opening frame and handed over inside
-     the first fifth of the move, while both are still formless, so the swap has
-     nothing to show. */
+     The blob underneath exists only to cover the moment before the mask is ready.
+     It is tuned to the masked layer's opening frame and handed over inside the first
+     fifth of the move, while both are still formless, so the swap has nothing to
+     show. */
   const fieldOpacity = 1 - ramp(formation, 0.02, 0.2);
   const markOpacity = ramp(formation, 0, 0.16);
 
@@ -176,9 +185,18 @@ export default function LiquidMetalHero({
 
   /* The tilt is a real rotation of the plane the shader is drawn on, under a
      perspective — the mark turns to face the cursor rather than sliding around
-     under it. The press nudge pushes it away and lets it come back. */
-  const tiltX = -drift.y * 11 * grip;
-  const tiltY = drift.x * 13 * grip;
+     under it. The press nudge pushes it away and lets it come back.
+
+     Dragging turns it further, and only turns it: the mark holds its place in the
+     composition and swings on the spot, roughly a degree for every five pixels
+     dragged. Letting go walks the angle back rather than snapping it.
+
+     The two share one budget. Hover spends a fixed slice of MAX_TILT and the drag
+     eases onto whatever is left, so however hard it is thrown the mark never turns
+     more than 30° off-face — far enough to read as a solid, never so far that it
+     goes edge-on and disappears. */
+  const tiltX = (-drift.y * HOVER_TILT_X - swing(drift.dragY, MAX_TILT - HOVER_TILT_X)) * grip;
+  const tiltY = (drift.x * HOVER_TILT_Y + swing(drift.dragX, MAX_TILT - HOVER_TILT_Y)) * grip;
   const push = 1 - drift.pulse * 0.022;
 
   /* The rise. Done here rather than through the shader's own offset: the offset is
@@ -208,18 +226,22 @@ export default function LiquidMetalHero({
             hands back no WebGL context at all */}
         <div className="absolute inset-0 bg-background" />
 
-        {/* The open field: no image, so it draws on the first frame. Unmounted as
-            soon as it has faded out, to hand its WebGL context back rather than idle
-            two of them for the life of the page. */}
+        {/* The blob: no image, so it draws on the first frame, which is its whole
+            job — covering the seconds the masked layer spends turning the SVG into a
+            distance field. `metaballs` is the shader's own liquid mass, so the
+            handover is blob to molten letter rather than field to letter. Unmounted
+            as soon as it has faded out, to hand its WebGL context back rather than
+            idle two of them for the life of the page. */}
         {!settled && fieldOpacity > 0.001 && (
           <LiquidMetal
             {...backdrop}
+            shape="metaballs"
             colorBack={GROUND}
             colorTint={SILVER}
-            softness={0.74}
+            softness={0.85}
             repetition={1.5}
-            distortion={0.5}
-            contour={0.04}
+            distortion={1}
+            contour={0.6}
             shiftRed={0.02}
             shiftBlue={0.03}
             fit="cover"
@@ -259,22 +281,28 @@ export default function LiquidMetalHero({
                 /* contain, not cover: cover crops, and the whole point is the
                    silhouette. */
                 fit="contain"
-                scale={zoom(3.8, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
+                scale={zoom(1.15, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
                 /* the rise: it comes up from under the fold and settles just above
                    centre, where the CTA row leaves it room */
                 offsetY={-0.03 + drift.y * 0.02 * grip}
                 offsetX={drift.x * 0.02 * grip}
-                /* soft, wide and turbulent to begin with; tight and calm at rest */
-                softness={lerp(0.74, 0.36, formation)}
-                contour={lerp(0.04, 0.3, formation)}
-                shiftRed={lerp(0.02, 0.07, formation)}
-                shiftBlue={lerp(0.03, 0.09, formation)}
+                /* `contour` is the morph. It is the only parameter that touches the
+                   silhouette rather than the pattern painted over it — the shader
+                   calls it the strength of the distortion on the shape edges — so
+                   run it high and the mask churns into a shapeless body of metal,
+                   walk it down and the mark sets out of it. Everything else here is
+                   the surface: molten and soft on the way in, banded and tight at
+                   rest, which is the difference between plastic and metal. */
+                softness={lerp(0.85, 0.2, formation)}
+                contour={lerp(1, 0.26, formation)}
+                shiftRed={lerp(0.02, 0.12, formation)}
+                shiftBlue={lerp(0.03, 0.16, formation)}
                 rotation={lerp(7, 0, formation)}
                 /* the pointer drives the flow once there is a mark to drive */
                 angle={64 + drift.x * 46 * grip}
-                repetition={lerp(1.5, 2.2, formation) + drift.y * 0.35 * grip}
+                repetition={lerp(1.5, 3.4, formation) + drift.y * 0.35 * grip}
                 distortion={
-                  lerp(0.5, 0.11, formation) +
+                  lerp(1, 0.14, formation) +
                   (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.12) * grip
                 }
                 speed={
