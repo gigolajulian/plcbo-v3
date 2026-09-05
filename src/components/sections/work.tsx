@@ -28,7 +28,6 @@ const PROJECTS: Project[] = [
 
 function Plate({ project, index }: { project: Project; index: number }) {
   const { ref, y } = useParallax(0.055);
-  const no = String(index + 1).padStart(2, '0');
 
   return (
     <Reveal
@@ -47,7 +46,7 @@ function Plate({ project, index }: { project: Project; index: number }) {
       >
         <div
           ref={ref}
-          className={cn('relative overflow-hidden', project.wide ? 'aspect-[16/9]' : 'aspect-[4/5]')}
+          className={cn('relative overflow-hidden', project.wide ? 'aspect-[21/9]' : 'aspect-[1/1]')}
         >
           {/* Two elements, two transforms. The drift lives on the wrapper and the
               hover zoom on the image — put both on one node and whichever writes
@@ -67,11 +66,6 @@ function Plate({ project, index }: { project: Project; index: number }) {
         {/* the plate's own scrim, so the caption reads over any photograph */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-background via-background/70 to-transparent" />
 
-        {/* the index rail, top-left — the thing that makes a grid read as a catalogue */}
-        <span className="eyebrow pointer-events-none absolute left-6 top-6 text-foreground/70">
-          {no}
-        </span>
-
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-6 p-6">
           <div>
             <h3 className="font-display text-2xl font-semibold uppercase tracking-[0.06em] text-foreground">
@@ -82,7 +76,7 @@ function Plate({ project, index }: { project: Project; index: number }) {
           <div className="flex items-center gap-4">
             <span className="eyebrow">{project.year}</span>
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border text-foreground transition-colors duration-300 group-hover:border-transparent group-hover:bg-foreground group-hover:text-background">
-              <ArrowUpRight className="h-4 w-4" />
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
             </span>
           </div>
         </div>

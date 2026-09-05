@@ -131,6 +131,7 @@ export function Connect() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                spellCheck={false}
                 placeholder="you@studio.com"
                 aria-invalid={Boolean(errors.email)}
                 className={cn(inputClass, errors.email && 'border-destructive')}

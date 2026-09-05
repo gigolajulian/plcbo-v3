@@ -69,7 +69,7 @@ export function Nav() {
         <nav
           aria-label="Primary"
           className={cn(
-            'hidden items-center gap-10 transition-all duration-500 md:flex',
+            'hidden items-center gap-10 transition-[opacity,transform] duration-500 md:flex',
             revealed
               ? 'pointer-events-auto translate-y-0 opacity-100'
               : 'pointer-events-none -translate-y-1 opacity-0',
@@ -97,7 +97,7 @@ export function Nav() {
             asChild
             size="sm"
             className={cn(
-              'hidden h-9 rounded-full bg-foreground px-5 font-mono text-[11px] uppercase tracking-[0.14em] text-background transition-all duration-500 hover:bg-foreground/90 md:inline-flex',
+              'hidden h-9 rounded-full bg-foreground px-5 font-mono text-[11px] uppercase tracking-[0.14em] text-background transition-[opacity,transform] duration-500 hover:bg-foreground/90 md:inline-flex',
               revealed ? 'opacity-100' : 'pointer-events-none opacity-0',
             )}
           >
@@ -112,7 +112,7 @@ export function Nav() {
             aria-label={open ? 'Close menu' : 'Open menu'}
             className="grid h-11 w-11 place-items-center rounded-full border border-border text-foreground transition-colors hover:bg-foreground/10 md:hidden"
           >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {open ? <X aria-hidden="true" className="h-4 w-4" /> : <Menu aria-hidden="true" className="h-4 w-4" />}
           </button>
         </div>
       </div>

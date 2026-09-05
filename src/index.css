@@ -78,11 +78,26 @@
     scroll-behavior: smooth;
     scroll-padding-top: 96px;
     -webkit-tap-highlight-color: transparent;
+    /* Tells the browser the page is dark, so the scrollbar and any native control
+       it draws for us come up dark too rather than white against #08080a. */
+    color-scheme: dark;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Skips the ~300ms wait a touch browser spends checking whether a tap is the
+     start of a double-tap-to-zoom. Only on things that are actually tapped. */
+  a,
+  button,
+  [role='button'],
+  input,
+  textarea,
+  select,
+  label {
+    touch-action: manipulation;
   }
 
   ::selection {
