@@ -103,7 +103,16 @@ spikes on press and decays, and a `drag` offset in pixels.
 
 Position tilts the plane the shader is drawn on — a real `rotateX`/`rotateY` under a
 `perspective`, so the mark turns to face the cursor — and steers `angle`,
-`repetition` and `distortion`. The pulse nudges the mark back and kicks the flow.
+`repetition` and `distortion`.
+
+The pulse is a ripple with an origin. It is an envelope rather than a spike — held up
+for 150ms and chased in both directions, so the press has a rise you can see and a
+tail that reads as the surface settling — and while it runs, the `transform-origin`
+travels from the middle of the mark to wherever the press landed and back. A two
+percent scale about a moving origin is the ripple: the metal swells outward from the
+point that was touched, not from the centre of the letter. Under it, the press shoves
+the shader's `offsetX/offsetY` away from that same point and bumps `repetition` and
+`distortion`, so the churn has a direction too.
 Dragging turns it further and *only* turns it: the mark holds its place in the
 composition and swings on the spot, about a degree for every five pixels. Hover and
 drag share one budget — `MAX_TILT`, 30° — with the hover tilt spending a fixed slice

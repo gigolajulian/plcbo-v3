@@ -7,21 +7,31 @@ export type Drift = {
   y: number;
   /** 0 at rest, 1 while the pointer is over the element */
   energy: number;
-  /** spikes to 1 on press and decays back to 0 */
+  /** 0 → 1 → 0 across a press: a short rise and a long tail, never a jump */
   pulse: number;
+  /** where the last press landed, in the same -1..1 frame as x and y */
+  pressX: number;
+  pressY: number;
   /** how far the mark has been dragged from home, in px */
   dragX: number;
   dragY: number;
 };
 
-const REST: Drift = { x: 0, y: 0, energy: 0, pulse: 0, dragX: 0, dragY: 0 };
+const REST: Drift = { x: 0, y: 0, energy: 0, pulse: 0, pressX: 0, pressY: 0, dragX: 0, dragY: 0 };
 
 /* How fast the value chases the pointer. Low numbers read as weight — the metal
  * lags behind the cursor and keeps moving after it stops, which is the whole point
  * of an interactive backdrop rather than a reactive one. */
 const TRACK = 0.055;
 const SETTLE = 0.032;
-const DECAY = 0.07;
+
+/* The press is an envelope, not a spike. Snapping the value to 1 and decaying from
+ * there put the whole of the motion on the release; holding it up for a beat and
+ * chasing it in both directions gives the press a rise you can see, and a tail long
+ * enough to read as the surface settling rather than a value expiring. */
+const PRESS_HOLD_MS = 150;
+const PRESS_RISE = 0.2;
+const PRESS_FALL = 0.045;
 /* A drag is direct manipulation: it has to feel held, not chased. Letting go is the
  * opposite — the mark takes its time coming home. */
 const HELD = 0.4;
@@ -44,6 +54,7 @@ export function usePointerDrift(enabled: boolean) {
   const frame = React.useRef<number | null>(null);
   const dragging = React.useRef(false);
   const origin = React.useRef({ x: 0, y: 0 });
+  const pressedAt = React.useRef(Number.NEGATIVE_INFINITY);
 
   const tick = React.useCallback(() => {
     const t = target.current;
@@ -51,18 +62,24 @@ export function usePointerDrift(enabled: boolean) {
     const rate = t.energy > 0 ? TRACK : SETTLE;
     const pull = dragging.current ? HELD : HOMING;
 
+    /* held up for the length of the press, then let go of */
+    const held = performance.now() - pressedAt.current < PRESS_HOLD_MS ? 1 : 0;
+    const pulse = v.pulse + (held - v.pulse) * (held > v.pulse ? PRESS_RISE : PRESS_FALL);
+
     const next: Drift = {
       x: v.x + (t.x - v.x) * rate,
       y: v.y + (t.y - v.y) * rate,
       energy: v.energy + (t.energy - v.energy) * SETTLE,
-      /* the press impulse only ever decays — it is set directly, not chased */
-      pulse: v.pulse * (1 - DECAY),
+      pulse,
+      pressX: t.pressX,
+      pressY: t.pressY,
       dragX: v.dragX + (t.dragX - v.dragX) * pull,
       dragY: v.dragY + (t.dragY - v.dragY) * pull,
     };
 
     const settled =
       !dragging.current &&
+      !held &&
       Math.abs(next.x - t.x) < EPSILON &&
       Math.abs(next.y - t.y) < EPSILON &&
       Math.abs(next.energy - t.energy) < EPSILON &&
@@ -79,6 +96,8 @@ export function usePointerDrift(enabled: boolean) {
       y: round(value.current.y),
       energy: round(value.current.energy),
       pulse: round(value.current.pulse),
+      pressX: round(value.current.pressX),
+      pressY: round(value.current.pressY),
       dragX: Math.round(value.current.dragX * 10) / 10,
       dragY: Math.round(value.current.dragY * 10) / 10,
     });
@@ -142,9 +161,17 @@ export function usePointerDrift(enabled: boolean) {
         run();
       },
       onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
-        /* set straight on the value, not the target: a press is an impulse the
-           surface absorbs, not a position it travels to */
-        value.current = { ...value.current, pulse: 1 };
+        const rect = event.currentTarget.getBoundingClientRect();
+        /* where the press landed, so whatever it sets off can start from there
+           rather than from the middle of the mark */
+        if (rect.width && rect.height) {
+          target.current = {
+            ...target.current,
+            pressX: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            pressY: ((event.clientY - rect.top) / rect.height) * 2 - 1,
+          };
+        }
+        pressedAt.current = performance.now();
         dragging.current = true;
         origin.current = { x: event.clientX, y: event.clientY };
         window.addEventListener('pointermove', onWindowMove, { passive: true });
@@ -153,7 +180,13 @@ export function usePointerDrift(enabled: boolean) {
         run();
       },
       onPointerLeave: () => {
-        target.current = { ...REST, dragX: target.current.dragX, dragY: target.current.dragY };
+        target.current = {
+          ...REST,
+          pressX: target.current.pressX,
+          pressY: target.current.pressY,
+          dragX: target.current.dragX,
+          dragY: target.current.dragY,
+        };
         run();
       },
     };

@@ -197,7 +197,15 @@ export default function LiquidMetalHero({
      goes edge-on and disappears. */
   const tiltX = (-drift.y * HOVER_TILT_X - swing(drift.dragY, MAX_TILT - HOVER_TILT_X)) * grip;
   const tiltY = (drift.x * HOVER_TILT_Y + swing(drift.dragX, MAX_TILT - HOVER_TILT_Y)) * grip;
-  const push = 1 - drift.pulse * 0.022;
+
+  /* The press swells the mark very slightly — and the origin of that swell travels
+     to wherever the press landed and back again, so the surface moves outward from
+     the point that was touched instead of from the middle of the letter. That is the
+     whole ripple: a scale of two percent about a moving origin, with the shader's
+     own churn under it. */
+  const push = 1 + drift.pulse * 0.022;
+  const originX = lerp(50, ((drift.pressX + 1) / 2) * 100, drift.pulse);
+  const originY = lerp(46, ((drift.pressY + 1) / 2) * 100, drift.pulse);
 
   /* The rise. Done here rather than through the shader's own offset: the offset is
      measured against the fitted object box, so it moves the mark by a couple of
@@ -266,7 +274,7 @@ export default function LiquidMetalHero({
             className="absolute inset-0"
             style={{
               transform: `translate3d(0, ${rise.toFixed(1)}px, 0) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg) scale(${push.toFixed(4)})`,
-              transformOrigin: '50% 46%',
+              transformOrigin: `${originX.toFixed(2)}% ${originY.toFixed(2)}%`,
               filter,
               willChange: 'transform, filter',
             }}
@@ -284,8 +292,10 @@ export default function LiquidMetalHero({
                 scale={zoom(1.15, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
                 /* the rise: it comes up from under the fold and settles just above
                    centre, where the CTA row leaves it room */
-                offsetY={-0.03 + drift.y * 0.02 * grip}
-                offsetX={drift.x * 0.02 * grip}
+                /* the press also shoves the pattern away from where it landed, so
+                   the churn has a direction rather than just happening everywhere */
+                offsetY={-0.03 + (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip}
+                offsetX={(drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip}
                 /* `contour` is the morph. It is the only parameter that touches the
                    silhouette rather than the pattern painted over it — the shader
                    calls it the strength of the distortion on the shape edges — so
@@ -300,10 +310,10 @@ export default function LiquidMetalHero({
                 rotation={lerp(7, 0, formation)}
                 /* the pointer drives the flow once there is a mark to drive */
                 angle={64 + drift.x * 46 * grip}
-                repetition={lerp(1.5, 3.4, formation) + drift.y * 0.35 * grip}
+                repetition={lerp(1.5, 3.4, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
                 distortion={
                   lerp(1, 0.14, formation) +
-                  (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.12) * grip
+                  (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
                 }
                 speed={
                   reduceMotion || !live
