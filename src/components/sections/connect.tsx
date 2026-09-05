@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Reveal } from '@/components/reveal';
+import { Reveal, Words } from '@/components/reveal';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -83,13 +83,13 @@ export function Connect() {
           <Reveal>
             <p className="eyebrow">Connect</p>
           </Reveal>
-          <Reveal delay={1}>
-            <h2 className="mt-6 font-display text-[clamp(2.5rem,7vw,5rem)] font-semibold leading-[0.95] tracking-[-0.02em] text-foreground">
-              Ready to
-              <br />
-              <span className="text-accent">Create?</span>
-            </h2>
-          </Reveal>
+          {/* two runs of words rather than one, because the second line is a
+              different colour and `Words` takes a string, not markup */}
+          <h2 className="mt-6 font-display text-[clamp(2.5rem,7vw,5rem)] font-semibold leading-[0.95] tracking-tight text-foreground">
+            <Words as="span" text="Ready to" delay={1} />
+            <br />
+            <Words as="span" text="Create?" delay={2} className="text-accent" />
+          </h2>
           <Reveal delay={2}>
             <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-ink-2">
               Tell us what you are making and when you need it. We reply within a day.
@@ -106,8 +106,11 @@ export function Connect() {
           </Reveal>
         </div>
 
-        <Reveal delay={2}>
-          <form onSubmit={onSubmit} noValidate className="space-y-4">
+        {/* The fields arrive one after another rather than the form arriving whole.
+            `space-y-4` still applies — it spaces direct children, and the Reveal
+            wrappers are now the direct children. */}
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
+          <Reveal delay={1}>
             <Field id="f-name" label="Name" error={errors.name}>
               <input
                 id="f-name"
@@ -119,7 +122,9 @@ export function Connect() {
                 className={cn(inputClass, errors.name && 'border-destructive')}
               />
             </Field>
+          </Reveal>
 
+          <Reveal delay={2}>
             <Field id="f-email" label="Email" error={errors.email}>
               <input
                 id="f-email"
@@ -131,7 +136,9 @@ export function Connect() {
                 className={cn(inputClass, errors.email && 'border-destructive')}
               />
             </Field>
+          </Reveal>
 
+          <Reveal delay={3}>
             <Field id="f-message" label="Project" error={errors.message}>
               <textarea
                 id="f-message"
@@ -142,7 +149,9 @@ export function Connect() {
                 className={cn(inputClass, 'resize-y', errors.message && 'border-destructive')}
               />
             </Field>
+          </Reveal>
 
+          <Reveal delay={4}>
             <div className="flex flex-wrap items-center gap-6 pt-2">
               <Button
                 type="submit"
@@ -155,8 +164,8 @@ export function Connect() {
                 {sent ? 'Opening your mail client…' : 'Opens in your mail client.'}
               </p>
             </div>
-          </form>
-        </Reveal>
+          </Reveal>
+        </form>
       </div>
     </section>
   );

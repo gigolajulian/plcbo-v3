@@ -13,7 +13,10 @@ const LINKS = [
   { id: 'connect', label: 'Connect' },
 ];
 
-const IDS = ['home', ...LINKS.map((l) => l.id)];
+/* `intro` has no nav link of its own, but the spy still needs to know it exists —
+   without it, reading the intro lights up whichever neighbour is nearest and the nav
+   claims you are somewhere you are not. */
+const IDS = ['home', 'intro', ...LINKS.map((l) => l.id)];
 
 export function Nav() {
   const active = useScrollSpy(IDS);

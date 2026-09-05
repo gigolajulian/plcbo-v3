@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/*  The typeface.
+ *
+ *  Kept under src/ rather than public/ so Vite rewrites and hashes the URL: it gets
+ *  cache-busting for nothing, and it cannot repeat the base-path bug that took the
+ *  first deploy down — GitHub Pages serves this site from /<repo>/, so a hard-coded
+ *  /fonts/… would 404 there exactly as /mark.svg did.
+ *
+ *  `font-weight: 100 900` on a single-weight face is deliberate. Univers 67 is Bold
+ *  Condensed and there is only this one cut, so every `font-semibold` on the page
+ *  would otherwise make the browser synthesise a bold by smearing outlines that are
+ *  already heavy. Claiming the whole range maps every weight to this file and turns
+ *  synthesis off; the weight utilities stay in the markup and simply stop meaning
+ *  anything, which is reversible if a second cut ever turns up.
+ */
+@font-face {
+  font-family: 'OPTI Univers';
+  src: url('./fonts/opti-univers-67.otf') format('opentype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /*  PLCBO v3 — tokens
  *  The shadcn variables are not generic slate here: every one of them is bound to
  *  the dark cut's palette, so `bg-background` / `text-foreground` in the stock

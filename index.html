@@ -20,12 +20,9 @@
     <meta property="og:image" content="/img/hero.webp" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- The typeface is self-hosted and declared in src/index.css. No Google Fonts:
+         that was a render-blocking stylesheet and two DNS round trips for three
+         families the site no longer uses. -->
   </head>
   <body>
     <div id="root"></div>

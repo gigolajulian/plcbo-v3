@@ -46,7 +46,18 @@ export function useCountUp(target: number) {
       }, TICK_MS);
     };
 
-    const forced = window.setTimeout(finish, FORCE_MS);
+    /* Only when nobody can be watching. Snapping to the target unconditionally at 3s
+       meant the counters had always finished before anyone scrolled down to them —
+       the safety net was eating the animation it was there to protect. */
+    const onVisibility = () => {
+      if (document.hidden) finish();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const forced = window.setTimeout(() => {
+      if (document.hidden) finish();
+    }, FORCE_MS);
+
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
@@ -59,6 +70,7 @@ export function useCountUp(target: number) {
     io.observe(node);
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
       window.clearTimeout(forced);
       if (tick) window.clearInterval(tick);
       io.disconnect();

@@ -1,6 +1,8 @@
 import { Cursor } from '@/components/cursor';
+import { Clients } from '@/components/sections/clients';
 import { Connect } from '@/components/sections/connect';
 import { Footer } from '@/components/sections/footer';
+import { Intro } from '@/components/sections/intro';
 import { Nav } from '@/components/sections/nav';
 import { Services } from '@/components/sections/services';
 import { Studio } from '@/components/sections/studio';
@@ -29,6 +31,11 @@ export default function App() {
           onSecondaryCtaClick={() => scrollTo('work')}
         />
 
+        {/* Ordered for someone deciding whether to get in touch: say what this is,
+            show who has already trusted it, prove it with the work, then price it
+            with services, then introduce the people, then ask. */}
+        <Intro />
+        <Clients />
         <Work />
         <Services />
         <Studio />

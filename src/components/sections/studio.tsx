@@ -10,7 +10,6 @@ const STATS = [
   { n: 24, suffix: 'h', label: 'Reply time' },
 ];
 
-const CLIENTS = ['Google', '/Paradox/', 'WIRED', 'Nikoo', 'Strom'];
 
 function Stat({ n, suffix, label }: { n: number; suffix: string; label: string }) {
   const { ref, value } = useCountUp(n);
@@ -66,21 +65,6 @@ export function Studio() {
           </Reveal>
         </div>
 
-        <Reveal delay={2}>
-          <div className="mt-26 border-t border-border pt-10">
-            <p className="eyebrow">Selected clients</p>
-            <ul className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
-              {CLIENTS.map((client) => (
-                <li
-                  key={client}
-                  className="font-display text-2xl font-semibold tracking-tight text-ink-3 transition-colors duration-300 hover:text-foreground sm:text-3xl"
-                >
-                  {client}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

@@ -51,10 +51,13 @@ export function Services() {
             <Reveal
               key={service.no}
               as="article"
-              delay={i % 3}
+              variant="wipe"
+              /* stagger across the row, not down the list — the eye reads the grid
+                 left to right, so cells that arrive in that order feel dealt out */
+              delay={(i % 3) + Math.floor(i / 3)}
               className="group bg-background p-10 transition-colors duration-500 hover:bg-card"
             >
-              <span className="font-mono text-[11px] tracking-[0.18em] text-accent">
+              <span className="inline-block origin-left font-mono text-[11px] tracking-[0.18em] text-accent transition-transform duration-500 ease-smooth group-hover:scale-125 group-hover:text-foreground">
                 {service.no}
               </span>
               <h3 className="mt-6 font-display text-2xl font-semibold tracking-tight text-foreground">

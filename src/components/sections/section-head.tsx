@@ -1,4 +1,4 @@
-import { Reveal } from '@/components/reveal';
+import { Reveal, Words } from '@/components/reveal';
 
 export function SectionHead({
   label,
@@ -14,12 +14,20 @@ export function SectionHead({
       <Reveal>
         <p className="eyebrow mb-6">{label}</p>
       </Reveal>
-      <Reveal delay={1}>
-        <h2 className="font-display text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[0.95] tracking-[-0.02em] text-foreground">
-          {title} <span className="text-ink-3">↘</span>
-        </h2>
-      </Reveal>
-      <Reveal delay={2}>
+
+      {/* the rule draws itself across under the label, so the section opens with a
+          line being struck rather than a block fading up */}
+      <Reveal variant="rule" delay={1} className="mb-6 h-px w-full max-w-sm bg-border" />
+
+      <Words
+        as="h2"
+        delay={1}
+        text={title}
+        suffix={<span className="text-ink-3"> ↘</span>}
+        className="font-display text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[0.95] tracking-tight text-foreground"
+      />
+
+      <Reveal delay={3}>
         <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-ink-2">
           {lede}
         </p>

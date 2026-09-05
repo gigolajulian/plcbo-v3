@@ -59,10 +59,23 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      /* One face for the whole site — display, body and the label voice that used to
+         be mono. The fallbacks differ per role because they are what a reader sees
+         while the font loads, or if it never does: a condensed grotesque behind the
+         first two, a real monospace behind the third so the rails and the form
+         labels keep their rhythm rather than collapsing. */
       fontFamily: {
-        display: ['"Space Grotesk"', 'Geist', 'system-ui', 'sans-serif'],
-        sans: ['Geist', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
-        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        display: ['"OPTI Univers"', '"Arial Narrow"', 'Helvetica', 'system-ui', 'sans-serif'],
+        sans: ['"OPTI Univers"', '"Arial Narrow"', '-apple-system', 'BlinkMacSystemFont', 'Helvetica', 'Arial', 'sans-serif'],
+        mono: ['"OPTI Univers"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      /* `tracking-tight` is Tailwind's -0.025em, set for a normal-width grotesque.
+         Univers 67 is condensed — the letters are already close, and pulling them
+         tighter fills the counters in and turns the display sizes into a wall. Zero
+         here retunes every `tracking-tight` on the site at once, which is why the
+         headings use the scale rather than one-off bracket values. */
+      letterSpacing: {
+        tight: '0em',
       },
       transitionTimingFunction: {
         /* the site's one easing curve — a long, late settle */
