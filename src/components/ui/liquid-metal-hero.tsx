@@ -211,7 +211,14 @@ export default function LiquidMetalHero({
 
   /* Pointer response is scaled by the formation, so nothing steers the metal until
      there is a mark to steer. */
-  const interactive = !reduceMotion && live;
+  /* Deliberately not gated on `live`. That flag exists to stop the shader burning a
+     GPU on frames nobody is looking at; it has nothing to say about whether the mark
+     should answer a pointer. Tying the two together meant a document that reported
+     itself hidden at mount — a background tab, a restore from bfcache, an embedded
+     view — came back with the handlers stripped off and a hero that ignored the
+     cursor. The drift loop costs nothing while no one is interacting: it only runs
+     between a pointer event and the value settling. */
+  const interactive = !reduceMotion;
   const { drift, handlers } = usePointerDrift(interactive);
   const grip = formation;
 

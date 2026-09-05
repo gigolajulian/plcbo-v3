@@ -104,8 +104,16 @@ export function usePointerDrift(enabled: boolean) {
     frame.current = settled ? null : requestAnimationFrame(tick);
   }, []);
 
+  /* Cancel and re-arm rather than "schedule only if nothing is pending".
+     `requestAnimationFrame` does not fire in a hidden document, so a frame scheduled
+     just before the tab went to the background stays pending for ever — and a guard
+     that skips scheduling while something is pending then skips scheduling for the
+     rest of the session. One moment in a background tab and the mark stops answering
+     the pointer, permanently, with no error anywhere. Re-arming costs nothing (a
+     pointer event fires at most once a frame) and cannot wedge. */
   const run = React.useCallback(() => {
-    if (frame.current === null) frame.current = requestAnimationFrame(tick);
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(tick);
   }, [tick]);
 
   React.useEffect(() => {

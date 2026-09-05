@@ -75,8 +75,12 @@ export function Cursor() {
       frame = settled ? null : requestAnimationFrame(tick);
     };
 
+    /* Re-arm rather than skip. A frame scheduled just before the tab went to the
+       background never fires, so a "only if nothing is pending" guard would leave
+       the ring frozen wherever it was for the rest of the session. */
     const run = () => {
-      if (frame === null) frame = requestAnimationFrame(tick);
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(tick);
     };
 
     const onMove = (event: PointerEvent) => {
