@@ -45,8 +45,20 @@ function Field({
 }
 
 const inputClass =
-  'w-full rounded-md border border-border bg-card px-4 py-3 text-[15px] text-foreground placeholder:text-ink-3 transition-colors duration-300 hover:border-ink-3/50 focus:border-accent focus:outline-none';
+  'w-full border-0 border-b border-border bg-transparent px-0 py-3 text-[15px] text-foreground placeholder:text-ink-3 transition-colors duration-300 hover:border-ink-3 focus:border-foreground focus:outline-none';
 
+/**
+ * The ask.
+ *
+ * The address is the largest thing on the site, larger than the section headings and
+ * larger than the work. It was previously a 24px link sitting under a paragraph, on a
+ * page whose smallest heading was twice its size — which is the wrong way round for the
+ * one element the whole page exists to get someone to use.
+ *
+ * The form keeps its own column underneath. Its inputs lost their cards and became
+ * ruled lines: boxes were the body's default gesture everywhere and they are the reason
+ * the page read as a template.
+ */
 export function Connect() {
   const [errors, setErrors] = React.useState<Errors>({});
   const [sent, setSent] = React.useState(false);
@@ -77,39 +89,42 @@ export function Connect() {
   }
 
   return (
-    <section id="connect" className="scroll-mt-24 border-t border-border py-26">
-      <div className="shell grid grid-cols-1 gap-16 lg:grid-cols-2 lg:gap-26">
-        <div>
-          <Reveal>
-            <p className="eyebrow">Connect</p>
-          </Reveal>
-          {/* two runs of words rather than one, because the second line is a
-              different colour and `Words` takes a string, not markup */}
-          <h2 className="mt-6 font-display text-[clamp(2.5rem,7vw,5rem)] font-semibold leading-[0.95] tracking-tight text-foreground">
-            <Words as="span" text="Ready to" delay={1} />
-            <br />
-            <Words as="span" text="Create?" delay={2} className="text-accent" />
-          </h2>
-          <Reveal delay={2}>
-            <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-ink-2">
-              Tell us what you are making and when you need it. We reply within a day.
-            </p>
-          </Reveal>
-          <Reveal delay={3}>
-            <a
-              href={`mailto:${EMAIL}`}
-              className="mt-10 inline-flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-foreground transition-colors hover:text-accent"
-            >
-              {EMAIL}
-              <span aria-hidden="true">→</span>
-            </a>
-          </Reveal>
-        </div>
+    <section id="connect" className="scroll-mt-24 py-32">
+      <div className="shell">
+        <Reveal>
+          <p className="eyebrow">Connect</p>
+        </Reveal>
 
-        {/* The fields arrive one after another rather than the form arriving whole.
-            `space-y-4` still applies — it spaces direct children, and the Reveal
-            wrappers are now the direct children. */}
-        <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <Words
+          as="h2"
+          text="Ready to create?"
+          delay={1}
+          className="mt-6 font-display text-[clamp(1.75rem,3.5vw,2.75rem)] font-semibold leading-tight tracking-tight text-ink-2"
+        />
+
+        {/* The one accented element on this screen, and the largest on the site. */}
+        <Reveal delay={2}>
+          <a
+            href={`mailto:${EMAIL}`}
+            className="group mt-8 block font-display text-mega font-semibold tracking-tight text-foreground transition-colors duration-500 hover:text-accent"
+          >
+            {EMAIL}
+            <span className="mt-4 block h-px w-full origin-left scale-x-0 bg-accent transition-transform duration-700 ease-smooth group-hover:scale-x-100 motion-reduce:transition-none" />
+          </a>
+        </Reveal>
+
+        <Reveal delay={3}>
+          <p className="mt-8 max-w-md text-pretty text-lg leading-relaxed text-ink-2">
+            Tell us what you are making and when you need it. We reply within a day.
+          </p>
+        </Reveal>
+
+        {/* The fields arrive one after another rather than the form arriving whole. */}
+        <form
+          onSubmit={onSubmit}
+          noValidate
+          className="mt-20 grid grid-cols-1 gap-x-16 gap-y-4 md:grid-cols-2"
+        >
           <Reveal delay={1}>
             <Field id="f-name" label="Name" error={errors.name}>
               <input
@@ -117,7 +132,7 @@ export function Connect() {
                 name="name"
                 type="text"
                 autoComplete="name"
-                placeholder="Your name"
+                placeholder="Your name…"
                 aria-invalid={Boolean(errors.name)}
                 className={cn(inputClass, errors.name && 'border-destructive')}
               />
@@ -139,12 +154,12 @@ export function Connect() {
             </Field>
           </Reveal>
 
-          <Reveal delay={3}>
+          <Reveal delay={3} className="md:col-span-2">
             <Field id="f-message" label="Project" error={errors.message}>
               <textarea
                 id="f-message"
                 name="message"
-                rows={5}
+                rows={4}
                 placeholder="What are you making, and when do you need it?"
                 aria-invalid={Boolean(errors.message)}
                 className={cn(inputClass, 'resize-y', errors.message && 'border-destructive')}
@@ -152,12 +167,12 @@ export function Connect() {
             </Field>
           </Reveal>
 
-          <Reveal delay={4}>
+          <Reveal delay={4} className="md:col-span-2">
             <div className="flex flex-wrap items-center gap-6 pt-2">
               <Button
                 type="submit"
                 size="lg"
-                className="h-12 rounded-full bg-accent px-8 text-[15px] font-medium text-accent-foreground hover:bg-accent/90"
+                className="h-12 rounded-full bg-foreground px-8 text-[15px] font-medium text-background hover:bg-foreground/90"
               >
                 Send it over
               </Button>

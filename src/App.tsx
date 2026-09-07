@@ -1,4 +1,5 @@
 import { Cursor } from '@/components/cursor';
+import { SectionRail } from '@/components/section-rail';
 import { Clients } from '@/components/sections/clients';
 import { Connect } from '@/components/sections/connect';
 import { Footer } from '@/components/sections/footer';
@@ -19,6 +20,7 @@ export default function App() {
     <>
       <Cursor />
       <Nav />
+      <SectionRail />
 
       <main>
         <LiquidMetalHero

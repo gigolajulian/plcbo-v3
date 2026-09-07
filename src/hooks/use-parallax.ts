@@ -78,3 +78,62 @@ export function useParallax(strength = 0.06): {
 
   return { ref, y };
 }
+
+/**
+ * How far a tall container has travelled through its own pin, 0 → 1.
+ *
+ * 0 when its top meets the top of the viewport, 1 when its bottom meets the bottom —
+ * which for a `h-[260vh]` section wrapping an `h-screen` sticky child is exactly the
+ * window in which that child is stuck to the top of the screen. Feed it to
+ * `useTransform` to drive anything off scroll position rather than off entry.
+ *
+ * Same scheduler as `useParallax` above, and for the same two reasons: `useScroll`
+ * measures its target on mount and on resize, and the cancel-and-re-arm shape is what
+ * keeps a frame queued just before the tab is backgrounded from wedging the loop
+ * permanently.
+ */
+export function useScrollProgress(): {
+  ref: React.RefObject<HTMLDivElement>;
+  progress: MotionValue<number>;
+} {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const progress = useMotionValue(0);
+
+  React.useEffect(() => {
+    let frame: number | null = null;
+
+    const measure = () => {
+      frame = null;
+      const node = ref.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const span = rect.height - window.innerHeight;
+      /* A container no taller than the viewport never pins, so it has no pass to be
+         partway through. Report it finished rather than dividing by zero. */
+      if (span <= 0) {
+        progress.set(1);
+        return;
+      }
+
+      progress.set(Math.min(1, Math.max(0, -rect.top / span)));
+    };
+
+    const schedule = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [progress]);
+
+  return { ref, progress };
+}

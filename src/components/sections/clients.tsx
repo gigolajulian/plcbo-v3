@@ -1,32 +1,45 @@
 import { useReducedMotion } from 'framer-motion';
 
-import { Reveal } from '@/components/reveal';
+/**
+ * The client ribbon — and the only place in the body that is not near-black.
+ *
+ * Inverting one band is the cheapest rhythm the page has: five thousand pixels of the
+ * same ground is the reason the body read flat, and a single hard cut across it does
+ * more than any amount of tuning inside the dark. The two values are the identity
+ * system's paper and ink, borrowed for this band only. They are written here rather
+ * than added to the palette because nothing else on the site is light, and a token
+ * would invite a second one.
+ *
+ * It sits high on purpose: names are proof, and proof is worth more before someone has
+ * decided than after.
+ */
+const PAPER = '#f2f0ea';
+const INK = '#0e0e0e';
+const GRAPHITE = '#83806f';
 
 const CLIENTS = ['Google', '/Paradox/', 'WIRED', 'Nikoo', 'Strom', 'Oakley'];
 
-function Name({ children }: { children: string }) {
-  return (
-    <li className="shrink-0 px-10 font-display text-2xl font-semibold tracking-tight text-ink-3 transition-colors duration-300 hover:text-foreground sm:text-3xl">
-      {children}
-    </li>
-  );
-}
+/* The one place the site sets a colour outside the palette, so the hover lives in
+   the class list with it rather than in a style object elsewhere. */
+const NAME =
+  'shrink-0 px-10 font-display text-3xl font-semibold tracking-tight text-[#83806f] ' +
+  'transition-colors duration-300 hover:text-[#0e0e0e] sm:text-5xl';
 
-/**
- * The client ribbon.
- *
- * Moved up out of the foot of Studio: names are proof, and proof is worth more before
- * someone has decided than after. It runs continuously because a static row of six
- * names reads as a list, and a moving one reads as a roster.
- */
 export function Clients() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section aria-label="Selected clients" className="border-y border-border py-12">
-      <Reveal>
-        <p className="eyebrow shell mb-8">Selected clients</p>
-      </Reveal>
+    <section
+      aria-label="Selected clients"
+      className="py-14"
+      style={{ backgroundColor: PAPER, color: INK }}
+    >
+      <p
+        className="shell mb-8 font-mono text-[11px] uppercase tracking-[0.18em]"
+        style={{ color: GRAPHITE }}
+      >
+        Selected clients
+      </p>
 
       {reduceMotion ? (
         /* Not the animated track with the animation switched off. The global
@@ -37,7 +50,7 @@ export function Clients() {
           {CLIENTS.map((client) => (
             <li
               key={client}
-              className="font-display text-2xl font-semibold tracking-tight text-ink-3 sm:text-3xl"
+              className="font-display text-3xl font-semibold tracking-tight sm:text-5xl"
             >
               {client}
             </li>
@@ -62,7 +75,9 @@ export function Clients() {
             {[0, 1].map((copy) => (
               <ul key={copy} aria-hidden={copy === 1} className="flex shrink-0 items-center">
                 {CLIENTS.map((client) => (
-                  <Name key={client}>{client}</Name>
+                  <li key={client} className={NAME}>
+                    {client}
+                  </li>
                 ))}
               </ul>
             ))}

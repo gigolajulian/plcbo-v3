@@ -1,9 +1,13 @@
-import { ArrowUpRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import * as React from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from 'framer-motion';
 
 import { Reveal } from '@/components/reveal';
-import { SectionHead } from '@/components/sections/section-head';
-import { useParallax } from '@/hooks/use-parallax';
 import { asset } from '@/lib/asset';
 import { cn } from '@/lib/utils';
 
@@ -12,95 +16,156 @@ type Project = {
   tags: string;
   year: string;
   img: string;
-  /** full-width lead plates; the rest run two to a row */
-  wide?: boolean;
-  /** drops the plate down a row-height so the grid stops reading as a table */
-  offset?: boolean;
 };
 
 const PROJECTS: Project[] = [
-  { title: 'PLYGR3D', tags: 'Art direction ⟡ Photography', year: '2025', img: '/img/work-01.webp', wide: true },
+  { title: 'PLYGR3D', tags: 'Art direction ⟡ Photography', year: '2025', img: '/img/work-01.webp' },
   { title: 'ANGEL', tags: 'Editorial ⟡ Film', year: '2025', img: '/img/work-02.webp' },
-  { title: 'CHROME', tags: 'Product ⟡ Identity', year: '2024', img: '/img/work-03.webp', offset: true },
+  { title: 'CHROME', tags: 'Product ⟡ Identity', year: '2024', img: '/img/work-03.webp' },
   { title: 'DRIP', tags: 'Apparel ⟡ Campaign', year: '2024', img: '/img/work-04.webp' },
-  { title: 'CIRCUIT', tags: 'Brand system ⟡ Motion', year: '2024', img: '/img/work-05.webp', wide: true },
+  { title: 'CIRCUIT', tags: 'Brand system ⟡ Motion', year: '2024', img: '/img/work-05.webp' },
 ];
 
-function Plate({ project, index }: { project: Project; index: number }) {
-  const { ref, y } = useParallax(0.055);
+const CARD = { w: 300, h: 380 };
 
-  return (
-    <Reveal
-      as="article"
-      variant="plate"
-      delay={index % 2}
-      className={cn(
-        project.wide && 'md:col-span-2',
-        project.offset && 'md:mt-26',
-      )}
-    >
-      <a
-        href="#connect"
-        className="group relative block overflow-hidden rounded-lg border border-border bg-card"
-        aria-label={`${project.title} — ${project.tags.replace(' ⟡ ', ' and ')}, ${project.year}`}
-      >
-        <div
-          ref={ref}
-          className={cn('relative overflow-hidden', project.wide ? 'aspect-[21/9]' : 'aspect-[1/1]')}
-        >
-          {/* Two elements, two transforms. The drift lives on the wrapper and the
-              hover zoom on the image — put both on one node and whichever writes
-              `transform` last silently wins. The wrapper is 112% tall and offset up
-              by 6% so the drift never runs off the end of the photograph. */}
-          <motion.div style={{ y }} className="absolute left-0 top-[-6%] h-[112%] w-full">
-            <img
-              src={asset(project.img)}
-              alt={`${project.title} — ${project.tags.replace(' ⟡ ', ' and ')}`}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover transition-transform duration-700 ease-smooth motion-safe:group-hover:scale-[1.04]"
-            />
-          </motion.div>
-        </div>
+/**
+ * Does this reader have a pointer that can hover?
+ *
+ * Read once in the initialiser rather than in an effect, so the correct branch renders
+ * on the first paint — flipping afterwards would tear five lazy photographs out of the
+ * layout on every desktop load. There is no SSR here, so `window` is safe.
+ */
+function useFinePointer() {
+  const query = '(hover: hover) and (pointer: fine)';
+  const [fine, setFine] = React.useState(() => window.matchMedia(query).matches);
 
-        {/* the plate's own scrim, so the caption reads over any photograph */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-background via-background/70 to-transparent" />
+  React.useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setFine(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-6 p-6">
-          <div>
-            <h3 className="font-display text-2xl font-semibold uppercase tracking-[0.06em] text-foreground">
-              {project.title}
-            </h3>
-            <p className="eyebrow mt-2">{project.tags}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="eyebrow">{project.year}</span>
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border text-foreground transition-colors duration-300 group-hover:border-transparent group-hover:bg-foreground group-hover:text-background">
-              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
-            </span>
-          </div>
-        </div>
-      </a>
-    </Reveal>
-  );
+  return fine;
 }
 
+/**
+ * Work, as an index rather than a gallery.
+ *
+ * Five photographs in a card grid is what every studio site does, and it makes the type
+ * decorative. Rows make the type the work: the name is set large enough to read from
+ * across the room, and the photograph is what you get for showing interest in one.
+ *
+ * There is exactly one floating image for the whole section, not one per row. Its
+ * position is a pair of springs fed by a single `pointermove` on the list, so it trails
+ * the cursor with weight instead of being welded to it, and five rows cost five `src`
+ * swaps rather than five listeners and five animated elements.
+ */
 export function Work() {
+  const fine = useFinePointer();
+  const reduceMotion = useReducedMotion();
+  const floats = fine && !reduceMotion;
+
+  const [hovered, setHovered] = React.useState<number | null>(null);
+
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 220, damping: 26, mass: 0.6 });
+  const springY = useSpring(y, { stiffness: 220, damping: 26, mass: 0.6 });
+
+  const place = (e: React.PointerEvent, instant = false) => {
+    x.set(e.clientX - CARD.w / 2);
+    y.set(e.clientY - CARD.h / 2);
+    /* On the first row entered there is no previous position to travel from — without
+       this the card sails in from the top-left corner of the window. */
+    if (instant) {
+      springX.jump(x.get());
+      springY.jump(y.get());
+    }
+  };
+
   return (
-    <section id="work" className="scroll-mt-24 border-t border-border py-26">
+    <section id="work" className="scroll-mt-24 py-32">
+      {/* Work opens on its own terms — a name set against the count, not the same
+          eyebrow / rule / heading / lede stack that Services and Studio share. */}
+      <header className="shell mb-20 flex flex-wrap items-end justify-between gap-8">
+        <Reveal>
+          <p className="eyebrow mb-5">Selected work</p>
+          <h2 className="font-display text-mega font-semibold tracking-tight text-foreground">
+            Work
+          </h2>
+        </Reveal>
+        <Reveal delay={1}>
+          <p className="max-w-xs text-pretty leading-relaxed text-ink-2">
+            Identity systems, campaigns, editorial shoots and the sites they live on.
+            Five recent projects.
+          </p>
+        </Reveal>
+      </header>
+
+      <ul
+        className="border-t border-border"
+        onPointerMove={floats ? (e) => place(e) : undefined}
+      >
+        {PROJECTS.map((project, i) => (
+          <Reveal as="li" key={project.title} delay={i % 3} className="border-b border-border">
+            <a
+              href="#connect"
+              aria-label={`${project.title} — ${project.tags.replace(' ⟡ ', ' and ')}, ${project.year}`}
+              className="group block"
+              onPointerEnter={
+                floats
+                  ? (e) => {
+                      place(e, true);
+                      setHovered(i);
+                    }
+                  : undefined
+              }
+              onPointerLeave={floats ? () => setHovered(null) : undefined}
+            >
+              <div className="shell flex items-baseline gap-6 py-8 sm:gap-10">
+                <span
+                  className={cn(
+                    'font-mono text-[11px] tracking-[0.18em] transition-colors duration-500',
+                    hovered === i ? 'text-accent' : 'text-ink-3',
+                  )}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+
+                {/* The title is the only thing that moves. A row where four elements
+                    all slide on hover reads as a wobble, not a response. */}
+                <h3 className="flex-1 font-display text-index font-semibold uppercase tracking-tight text-ink-2 transition-[color,transform] duration-500 ease-smooth group-hover:translate-x-3 group-hover:text-foreground motion-reduce:group-hover:translate-x-0">
+                  {project.title}
+                </h3>
+
+                <span className="hidden max-w-[22ch] text-right leading-snug text-ink-3 md:block">
+                  {project.tags}
+                </span>
+                <span className="eyebrow shrink-0">{project.year}</span>
+              </div>
+
+              {/* No hover to reveal it with, so the photograph is simply here. A
+                  different element for a different reader, not the same one disabled. */}
+              {floats ? null : (
+                <div className="shell pb-8">
+                  <img
+                    src={asset(project.img)}
+                    alt={`${project.title} — ${project.tags.replace(' ⟡ ', ' and ')}`}
+                    loading="lazy"
+                    decoding="async"
+                    width={1200}
+                    height={800}
+                    className="aspect-[3/2] w-full rounded-lg object-cover"
+                  />
+                </div>
+              )}
+            </a>
+          </Reveal>
+        ))}
+      </ul>
+
       <div className="shell">
-        <SectionHead
-          label="Selected work"
-          title="Work"
-          lede="Identity systems, campaigns, editorial shoots and the sites they live on. Five recent projects."
-        />
-
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-          {PROJECTS.map((project, i) => (
-            <Plate key={project.title} project={project} index={i} />
-          ))}
-        </div>
-
         <Reveal delay={1}>
           <a
             href="#connect"
@@ -111,6 +176,31 @@ export function Work() {
           </a>
         </Reveal>
       </div>
+
+      {floats ? (
+        <AnimatePresence>
+          {hovered !== null ? (
+            <motion.div
+              key="peek"
+              aria-hidden="true"
+              className="pointer-events-none fixed left-0 top-0 z-40 overflow-hidden rounded-lg"
+              style={{ x: springX, y: springY, width: CARD.w, height: CARD.h }}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <img
+                src={asset(PROJECTS[hovered].img)}
+                alt=""
+                width={CARD.w}
+                height={CARD.h}
+                className="h-full w-full object-cover"
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      ) : null}
     </section>
   );
 }

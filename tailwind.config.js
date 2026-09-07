@@ -77,6 +77,13 @@ export default {
       letterSpacing: {
         tight: '0em',
       },
+      /* Two steps past the heading scale, for the three places the body is meant to
+         shout: the pinned intro sentence, the work index and the contact address.
+         Named rather than repeated as bracket clamps so they stay one decision. */
+      fontSize: {
+        mega: ['clamp(2.75rem, 8vw, 7rem)', { lineHeight: '0.94' }],
+        index: ['clamp(2rem, 6vw, 5rem)', { lineHeight: '1' }],
+      },
       transitionTimingFunction: {
         /* the site's one easing curve — a long, late settle */
         smooth: 'cubic-bezier(0.16, 1, 0.3, 1)',

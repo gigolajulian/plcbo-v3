@@ -34,40 +34,53 @@ const SERVICES = [
   },
 ];
 
+/**
+ * Six things, as a list.
+ *
+ * They were six identical bordered cells, which is the least interesting arrangement a
+ * list of six can have — every one the same size, so none of them is worth reading
+ * first. Rows give the titles somewhere to be large and the descriptions somewhere to
+ * be quiet, and the hairlines between them come from the layout rather than from six
+ * boxes each drawing its own.
+ *
+ * The description stays visible at all times. Hiding it behind the hover would look
+ * tidier and would mean a keyboard reader, a touch reader and a printer all get a list
+ * of six words with no explanation.
+ */
 export function Services() {
   return (
-    <section id="services" className="scroll-mt-24 border-t border-border py-26">
+    <section id="services" className="scroll-mt-24 py-32">
       <div className="shell">
         <SectionHead
           label="What we do"
           title="Services"
           lede="Six things we do. Most projects use three or four of them."
         />
+      </div>
 
-        {/* One hairline grid rather than six boxes — the rules come from the layout,
-            so nothing needs a border of its own and nothing doubles up at the seams. */}
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-          {SERVICES.map((service, i) => (
-            <Reveal
-              key={service.no}
-              as="article"
-              variant="wipe"
-              /* stagger across the row, not down the list — the eye reads the grid
-                 left to right, so cells that arrive in that order feel dealt out */
-              delay={(i % 3) + Math.floor(i / 3)}
-              className="group bg-background p-10 transition-colors duration-500 hover:bg-card"
-            >
-              <span className="inline-block origin-left font-mono text-[11px] tracking-[0.18em] text-accent transition-transform duration-500 ease-smooth group-hover:scale-125 group-hover:text-foreground">
+      <ul className="border-t border-border">
+        {SERVICES.map((service, i) => (
+          <Reveal
+            as="li"
+            key={service.no}
+            variant="wipe"
+            delay={i % 3}
+            className="group border-b border-border transition-colors duration-500 hover:bg-card"
+          >
+            <div className="shell grid grid-cols-1 items-baseline gap-x-10 gap-y-4 py-10 md:grid-cols-[3.5rem_1fr_28rem]">
+              <span className="font-mono text-[11px] tracking-[0.18em] text-ink-3 transition-colors duration-500 group-hover:text-accent">
                 {service.no}
               </span>
-              <h3 className="mt-6 font-display text-2xl font-semibold tracking-tight text-foreground">
+              <h3 className="font-display text-[clamp(1.75rem,4.5vw,3.25rem)] font-semibold leading-none tracking-tight text-foreground transition-transform duration-500 ease-smooth group-hover:translate-x-2 motion-reduce:group-hover:translate-x-0">
                 {service.title}
               </h3>
-              <p className="mt-4 text-pretty leading-relaxed text-ink-2">{service.body}</p>
-            </Reveal>
-          ))}
-        </div>
-      </div>
+              <p className="max-w-prose text-pretty leading-relaxed text-ink-3 transition-colors duration-500 group-hover:text-ink-2 md:col-start-3">
+                {service.body}
+              </p>
+            </div>
+          </Reveal>
+        ))}
+      </ul>
     </section>
   );
 }
