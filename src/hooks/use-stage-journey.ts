@@ -1,33 +1,38 @@
 import * as React from 'react';
 
 /**
- * The object's itinerary down the page.
+ * The object's itinerary.
  *
- * One body of metal travels the whole site, and at each of these sections it melts and
- * sets into a different shape. Only five, not one per section: Clients, Studio and the
- * footer inherit whatever arrived, which keeps a change of shape meaning something
- * rather than happening every screen.
+ * Two shapes, and one change between them: the mark the site opens on, and the PLCBO
+ * wordmark it becomes beside the statement. It does not turn back, and it does not go
+ * on changing down the page — an aperture, a film frame and an arrow were tried and cut,
+ * along with the per-transition flourishes that made each change of shape spin and
+ * stretch and shear. All of that read as forced, which is what happens when the motion
+ * is decoration laid over the material rather than something the material is doing.
  *
- * `scale` is the shader's own, which is bigger-is-bigger against a `fit="contain"` box.
- * `x` and `y` are fractions of the viewport from its centre. `opacity` is how present
- * the shape is: the first two are the subject of their screens, the last three are
- * company parked in the right-hand margin while the reader reads something else.
- *
- * The insets are why the companions only appear on a wide window. The shell caps at
- * 1200px with 64px of padding, so clear space beside the copy only exists past about
- * 1400 — below that the shell fills the screen and a parked shape sits directly on the
- * Services descriptions and the Studio counters, which is where the first cut of this
- * put it. Every one of these numbers was checked against the real content rects rather
- * than eyeballed, because the shader cannot be screenshotted: at 1440 the wordmark,
- * the aperture and the arrow clear the copy outright and the frame clears it by 4px. */
+ * What is left is the one move that was always convincing: the metal melts, and a
+ * different shape sets out of the melt.
+ */
+
 /**
  * Where a shape sits and how big it is.
  *
- * `scale` is the shader's own. From its vertex shader: the object box is a **square
- * whose side is `scale × the viewport's longer edge`**, with the mask contain-fitted
- * inside it. So on a landscape window a 2.76:1 wordmark at scale 0.46 is
- * `0.46 × 1440 = 662px` wide and `662 / 2.76 = 240px` tall — which is what makes these
- * numbers checkable against the layout instead of guesswork.
+ * `scale` is the shader's own, and it has to be reasoned about rather than eyeballed:
+ * this page cannot be screenshotted reliably or read back at all, so there is no
+ * looking at it.
+ *
+ * From the shader's vertex source the object box is a **square whose side is
+ * `scale × the viewport's longer edge`**, with the mask contain-fitted inside it — and
+ * since both masks are wider than tall, that means **drawn width = scale × the longer
+ * edge**, with the height following the mask's aspect. On a 1440-wide window the 2.76:1
+ * wordmark at 0.62 is `0.62 × 1440 = 893px` wide and 324px tall. Confirmed against a
+ * settled frame: measured left edge 884, predicted 884.
+ *
+ * Do not "calibrate" that factor down by measuring the mark. Its tint runs from white
+ * to near-black and the dark side of the letter disappears into a near-black page, so
+ * the silhouette looks about 78% of its real width and reasoning from it sends every
+ * other shape 25% too big. The wordmark, which is bright across most of its length, is
+ * the one to measure against.
  *
  * Position is `fx × 50vw + px`, from the centre of the screen. `fx: 0` is centred;
  * `fx: 1, px: -110` is a centre 110px in from the right edge. Written this way rather
@@ -44,154 +49,99 @@ export type Pose = {
   mask: string;
   wide: Placement;
   compact: Placement;
-  /** resting rotation, so a shape can be placed rather than stamped */
-  tilt: number;
-  opacity: number;
 };
 
 export const POSES: Pose[] = [
   {
-    /* The subject of its own screen, and the only shape in the middle of the page. */
+    /* Centred, and the subject of its own screen. */
     anchor: 'home',
     mask: '/mark-mask.png',
     wide: { scale: 0.49, fx: 0, px: 0, y: -0.02 },
     compact: { scale: 0.74, fx: 0, px: 0, y: -0.02 },
-    tilt: 0,
-    opacity: 1,
   },
   {
     /* A nameplate beside the statement, running off the right edge. At 1440 that is
-       662px wide centred 110px in from the edge, so its left edge lands at 999 — well
-       clear of the Intro's copy, which the `md:max-w-[52%]` there stops at 741. */
+       893px wide with its centre 110px in from the edge: the left edge lands at 884,
+       150px clear of the Intro's copy, which the `md:max-w-[52%]` there stops at 734,
+       and 336px of it runs off the side. Both halves of that matter — a smaller shape
+       sat 258px away from the copy with a gap in the middle of the composition, and one
+       that does not bleed reads as a picture placed on the page rather than the object
+       carrying on past it. Checked down to 768, where it still clears the copy by 22px,
+       which is why the placement is anchored to the edge in pixels rather than scaled
+       off the viewport.
+       On a portrait screen there is no margin to park in, so it stays centred and the
+       object simply leaves once the statement has been read. */
     anchor: 'intro',
     mask: '/wordmark-mask.png',
-    wide: { scale: 0.46, fx: 1, px: -110, y: 0 },
-    compact: { scale: 0.86, fx: 0, px: 0, y: -0.05 },
-    tilt: 0,
-    opacity: 1,
-  },
-  {
-    /* An aperture over the work — high, so it reads as an eye above the index rather
-       than a badge beside it, and above the rail rather than across it. */
-    anchor: 'work',
-    mask: '/aperture-mask.png',
-    wide: { scale: 0.15, fx: 1, px: -80, y: -0.26 },
-    compact: { scale: 0.15, fx: 1, px: -80, y: -0.26 },
-    tilt: 0,
-    opacity: 0.66,
-  },
-  {
-    /* The frame crosses to the other margin, level with the middle of the list, so the
-       object is not simply riding one corner down the whole page. Tilted a few degrees,
-       because a frame set dead square reads as a border. */
-    anchor: 'services',
-    mask: '/frame-mask.png',
-    wide: { scale: 0.17, fx: -1, px: 50, y: 0.02 },
-    compact: { scale: 0.17, fx: -1, px: 50, y: 0.02 },
-    tilt: -6,
-    opacity: 0.66,
-  },
-  {
-    /* And an arrow at the one place on the page that asks for something: low, back on
-       the right, and turned into the page so it points down at the form. */
-    anchor: 'connect',
-    mask: '/arrow-mask.png',
-    wide: { scale: 0.15, fx: 1, px: -80, y: 0.3 },
-    compact: { scale: 0.15, fx: 1, px: -80, y: 0.3 },
-    tilt: 28,
-    opacity: 0.66,
+    wide: { scale: 0.62, fx: 1, px: -110, y: 0 },
+    compact: { scale: 0.86, fx: 0, px: 0, y: -0.04 },
   },
 ];
 
-/**
- * How each change of shape carries itself.
- *
- * Without this every transition is the same event — melt to a round mass, swap, set —
- * and four identical melts down one page reads as a mechanism rather than a life. Each
- * of these deforms the mass while it is molten and unwinds as it sets, so the metal
- * spreads into the wordmark, coils down into the aperture, unfolds into the frame and
- * shears into the arrow. `bow` curves the path it travels rather than sliding it in a
- * straight line between two parking spots.
- *
- * Entry N is the change out of pose N. All of it is scaled by the melt, so at either
- * end of a transition every one of these is exactly zero and the shape is square on.
- */
-export type Morph = {
-  /** degrees of roll at full melt */
-  spin: number;
-  /** how much wider and taller the mass goes, as a fraction */
-  stretchX: number;
-  stretchY: number;
-  /** degrees of shear at full melt */
-  skew: number;
-  /** how far the path bows off the straight line, in fractions of the viewport */
-  bow: number;
-};
+/* The object's life ends as this section arrives. Without it the wordmark would ride
+ * the rest of the page parked over the work, the services copy and the form. */
+const FAREWELL = 'work';
 
-export const MORPHS: Morph[] = [
-  /* the mark spreads sideways into the word */
-  { spin: 0, stretchX: 0.38, stretchY: -0.18, skew: 0, bow: -0.05 },
-  /* the word gathers and coils down into the iris */
-  { spin: -26, stretchX: -0.28, stretchY: 0.16, skew: 0, bow: 0.1 },
-  /* the iris unfolds across the page into the frame */
-  { spin: 14, stretchX: 0.12, stretchY: 0.42, skew: -8, bow: -0.09 },
-  /* and the frame shears into the arrow */
-  { spin: -18, stretchX: 0.3, stretchY: -0.22, skew: 10, bow: 0.09 },
-];
-
-/* The window each change of shape happens in, as fractions of the viewport height
- * before its section reaches the top of the screen. A change therefore begins while
- * the previous section is still being read and finishes just as the new one lands.
+/* The window a change of shape happens in, as fractions of the viewport height before
+ * its section reaches the top of the screen — so it begins while the previous section
+ * is still being read and finishes just as the new one lands.
  *
- * ENTER is generous — nearly a screen and a half — because the melt has to have room
- * to be a movement rather than a flicker: at 1.05 the first change did not begin until
- * 1400px down, so the hero held a completely static mark for two and a half screens
- * before anything happened. The hero's runway was cut to match. */
+ * ENTER is nearly a screen and a half because the melt needs room to be a movement
+ * rather than a flicker. */
 const ENTER = 1.3;
 const LAND = 0.35;
 
+export type Journey = {
+  /** 0 at the first pose, 1 at the second; the fraction between is the change of shape. */
+  position: number;
+  /** 0 → 1 as the object's last section approaches and it takes its leave. */
+  exit: number;
+};
+
 /**
- * How far down its itinerary the object is, as a continuous position: 0 is the first
- * pose, 1 the second, and the fractional part is how far through a change of shape.
- *
- * Every transition contributes its own 0 → 1 to one running total, which is why this
- * is a loop and not a state machine — overlapping windows on a short screen simply
- * add up, and the value stays monotonic through them instead of fighting over which
- * section is current.
+ * How far along the object is, measured off the real position of the sections it
+ * answers to.
  *
  * Measured per frame from `getBoundingClientRect`, and scheduled cancel-and-re-arm.
- * Both of those are the same decisions as `useParallax`, for the same reasons: section
- * tops move as fonts land and images arrive, so a measurement cached at mount is of a
- * page that no longer exists; and a frame queued just before the tab is backgrounded
- * never fires, so a "skip if one is pending" guard would wedge the loop for good.
+ * Both are the same decisions as `useParallax`, for the same reasons: section tops move
+ * as the webfont lands and the photographs arrive, so a measurement cached at mount is
+ * of a page that no longer exists; and a frame queued just before the tab is
+ * backgrounded never fires, so a "skip if one is pending" guard would wedge the loop
+ * for good.
  *
- * Nothing is hidden until this runs. It reports the first pose synchronously on mount,
+ * Nothing is hidden until this runs — it reports the first pose synchronously on mount,
  * so a reader who never gets a frame still sees the mark, sitting still.
  */
-export function useStageJourney(): number {
-  const [position, setPosition] = React.useState(0);
+export function useStageJourney(): Journey {
+  const [journey, setJourney] = React.useState<Journey>({ position: 0, exit: 0 });
 
   React.useEffect(() => {
     let frame: number | null = null;
+
+    /** How far past the point where `id` starts pulling, 0 → 1. */
+    const approach = (id: string, vh: number) => {
+      const el = document.getElementById(id);
+      if (!el) return 0;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const start = top - vh * ENTER;
+      return Math.min(1, Math.max(0, (window.scrollY - start) / (vh * (ENTER - LAND))));
+    };
 
     const measure = () => {
       frame = null;
       const vh = window.innerHeight;
       if (!vh) return;
 
-      let total = 0;
-      for (let i = 1; i < POSES.length; i++) {
-        const el = document.getElementById(POSES[i].anchor);
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        const start = top - vh * ENTER;
-        const span = vh * (ENTER - LAND);
-        total += Math.min(1, Math.max(0, (window.scrollY - start) / span));
-      }
+      /* Every change contributes its own 0 → 1 to one running total. A loop rather than
+         a state machine, so overlapping windows on a short screen simply add up and the
+         value stays monotonic through them. */
+      let position = 0;
+      for (let i = 1; i < POSES.length; i++) position += approach(POSES[i].anchor, vh);
 
-      /* Rounded because this drives a dozen shader uniforms through React, and
+      /* Rounded because these drive a dozen shader uniforms through React, and
          sub-pixel scroll noise should not cost a render. */
-      setPosition(Math.round(total * 1000) / 1000);
+      const round = (n: number) => Math.round(n * 1000) / 1000;
+      setJourney({ position: round(position), exit: round(approach(FAREWELL, vh)) });
     };
 
     const schedule = () => {
@@ -203,8 +153,8 @@ export function useStageJourney(): number {
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     document.addEventListener('visibilitychange', schedule);
-    /* Sections move once the webfont lands and the lazy photographs arrive, and
-       neither fires a scroll event. */
+    /* Sections move once the webfont lands and the lazy photographs arrive, and neither
+       fires a scroll event. */
     const settle = window.setTimeout(measure, 800);
 
     return () => {
@@ -216,5 +166,5 @@ export function useStageJourney(): number {
     };
   }, []);
 
-  return position;
+  return journey;
 }

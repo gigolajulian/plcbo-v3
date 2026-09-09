@@ -78,7 +78,7 @@ export default function LiquidMetalHero({
   className,
 }: LiquidMetalHeroProps) {
   const reduceMotion = useReducedMotion();
-  const position = useStageJourney();
+  const { position } = useStageJourney();
 
   /* The buttons belong to a shape that is holding still, so they go as the metal starts
      to melt into the next one and do not come back — by then the reader is in the page,

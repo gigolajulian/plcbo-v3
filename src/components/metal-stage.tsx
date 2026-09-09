@@ -11,7 +11,7 @@ import { useReducedMotion } from 'framer-motion';
 import { Mark } from '@/components/mark';
 import { useFormation } from '@/hooks/use-formation';
 import { usePointerDrift } from '@/hooks/use-pointer-drift';
-import { MORPHS, POSES, useStageJourney } from '@/hooks/use-stage-journey';
+import { POSES, useStageJourney } from '@/hooks/use-stage-journey';
 import { asset } from '@/lib/asset';
 
 /* liquidMetalPresets[2] is the "Backdrop" preset. Spread `.params`, never the preset
@@ -34,11 +34,15 @@ const SILVER = '#c9c9d2';
 /** How long the metal takes to gather itself into the mark, once it can. */
 const FORMATION_MS = 6000;
 
-/* How much a shape swells as it melts, as a multiple of its own resting size. One
- * rule for every pose, rather than a molten size per shape: the mark blooms to about
- * what it always did, and the small companions bloom proportionally instead of
- * exploding into a full-screen blob halfway down the page. */
-const MELT_SWELL = 2.3;
+/* How much a shape swells as it melts, as a multiple of its own resting size. One rule
+ * for both poses rather than a molten size each, so the two converge on the same body
+ * of metal at the swap — which is half of why the swap cannot be seen.
+ *
+ * 1.7 and not the 2.3 it started at: the mass has to grow enough to stop being the
+ * shape it was, but at 2.3 the melt was 128% of the viewport's width, so the moment in
+ * the middle of the change was a smear running off both edges of the screen rather than
+ * a body of metal you could see the whole of. */
+const MELT_SWELL = 1.7;
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 /** Zoom has to be interpolated geometrically or the last third of it does all the work. */
@@ -179,20 +183,12 @@ class MaskBoundary extends React.Component<
  */
 export function MetalStage() {
   const reduceMotion = useReducedMotion();
-  const position = useStageJourney();
+  const { position, exit } = useStageJourney();
 
-  /* Two thresholds, because two different things are being decided.
-     `compact` is which placement a shape flies: on a portrait screen the wordmark
-     stays centred rather than parking off the right edge, where it would be almost
-     entirely off screen.
-     `roomy` is whether the parked companions exist at all. They live in the margin
-     beside the copy, and that margin only exists on a wide window — below it they land
-     on the Services descriptions and the Studio counters. It is also what keeps five
-     WebGL contexts off phones, which is the heaviest thing on the site. */
+  /* Which placement a shape flies. On a portrait screen the wordmark stays centred
+     rather than parking off the right edge, where there is no margin to park in and it
+     would be almost entirely off screen. */
   const compact = useMedia('(max-width: 767px)');
-  const roomy = useMedia('(min-width: 1400px)');
-
-  const shapes = roomy ? POSES.length : 2;
 
   const [ready, setReady] = React.useState(false);
   const onReady = React.useCallback(() => setReady(true), []);
@@ -202,9 +198,10 @@ export function MetalStage() {
 
   /* Where on the itinerary we are. Held at the first pose for a reader who asked for
      less motion — the object is then simply the mark, sitting still. */
-  const pos = reduceMotion ? 0 : Math.min(position, shapes - 1);
-  const index = Math.min(Math.floor(pos), shapes - 1);
-  const next = Math.min(index + 1, shapes - 1);
+  const last = POSES.length - 1;
+  const pos = reduceMotion ? 0 : Math.min(position, last);
+  const index = Math.min(Math.floor(pos), last);
+  const next = Math.min(index + 1, last);
   const blend = pos - index;
 
   /* The melt, and the swap inside it. `hump` holds the metal at full molten across the
@@ -213,11 +210,12 @@ export function MetalStage() {
   const melt = hump(blend, 0, 0.4, 0.6, 1);
   const swap = ramp(blend, 0.44, 0.56);
 
-  /* One axis, two drivers. The load formation melts the metal once, on a timer; the
-     journey melts it again at every change of shape, on scroll. Whichever wants it
-     more molten wins, so a reader who starts scrolling during the opening blends into
-     the journey instead of fighting it. */
-  const molten = Math.max(1 - formation, melt);
+  /* One axis, three drivers. The load formation melts the metal once, on a timer; the
+     change of shape melts it again, on scroll; and taking its leave melts it a third
+     time, so the object goes back to being liquid and drains away rather than ghosting
+     out at full polish. Whichever wants it more molten wins, so a reader who starts
+     scrolling during the opening blends into the journey instead of fighting it. */
+  const molten = Math.max(1 - formation, melt, exit * 0.85);
   const setness = 1 - molten;
 
   /* The opening: a plain fade up from the page ground, slow enough to read as the
@@ -230,10 +228,10 @@ export function MetalStage() {
      shallow dip reads as the metal gathering rather than as a cut. */
   const dip = 1 - 0.35 * (1 - Math.abs(swap * 2 - 1));
 
-  /* Where there is no margin to park in, the object leaves once the hero and the
-     statement have had their moment, rather than riding down the page on top of the
-     copy. */
-  const farewell = roomy ? 1 : 1 - clamp01(position - 1);
+  /* The object has two shapes and then it is done. It takes its leave as the work
+     arrives rather than riding the rest of the page parked over the index, the services
+     copy and the form. */
+  const farewell = reduceMotion ? 1 : 1 - exit;
 
   /* The pose being flown, blended across the change. Both layers read the same
      geometry, which is the other half of why the swap cannot be seen. */
@@ -241,24 +239,19 @@ export function MetalStage() {
   const there = compact ? POSES[next].compact : POSES[next].wide;
   const t = ease(blend);
   const rest = lerp(here.scale, there.scale, t);
-  const presence = lerp(POSES[index].opacity, POSES[next].opacity, t);
 
-  /* How this particular change carries itself. Four identical melts down one page read
-     as a mechanism; these give each one its own movement, and all of them are scaled by
-     the melt so they are exactly zero wherever a shape is set and legible. */
-  const morph = MORPHS[Math.min(index, MORPHS.length - 1)];
-  const arc = Math.sin(Math.PI * blend);
+  /* Position is `fx * 50vw + px`, so both halves interpolate and the CSS below can stay
+     one calc(). See the note on `Placement` for why it is not a plain fraction.
 
-  /* Position is `fx * 50vw + px`, so both halves interpolate and the CSS below can
-     stay one calc(). See the note on `Placement` for why it is not a plain fraction. */
+     Nothing here spins, shears or bows. An earlier cut gave the change of shape its own
+     roll and stretch and a curved path, on the theory that four identical melts down a
+     page would read as a mechanism — and it read as forced instead, which is what
+     motion laid *over* a material does rather than motion the material is doing. The
+     melt is the whole move: the metal loses its shape, travels, and a new shape sets
+     out of it. */
   const placeFx = lerp(here.fx, there.fx, t);
   const placePx = lerp(here.px, there.px, t);
-  /* The path bows rather than sliding straight between two parking spots. */
-  const placeY = lerp(here.y, there.y, t) + morph.bow * arc;
-  const spin = lerp(POSES[index].tilt, POSES[next].tilt, t) + morph.spin * melt;
-  const stretchX = 1 + morph.stretchX * melt;
-  const stretchY = 1 + morph.stretchY * melt;
-  const skew = morph.skew * melt;
+  const placeY = lerp(here.y, there.y, t);
 
   /* Pointer response belongs to the hero. It is scaled by the formation, so nothing
      steers the metal until there is a shape to steer, and faded out as the object
@@ -310,7 +303,7 @@ export function MetalStage() {
   /** Only the shape being left and the shape arriving are ever legible. */
   const layerOpacity = (i: number) => {
     const share = i === index ? 1 - swap : i === next && next !== index ? swap : 0;
-    return share * dip * presence * born * farewell;
+    return share * dip * born * farewell;
   };
 
   /** A layer nobody can see is parked, not merely transparent. */
@@ -369,8 +362,7 @@ export function MetalStage() {
               `${(placeY * 100).toFixed(2)}%) ` +
               `translateY(${rise.toFixed(1)}px) ` +
               `rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg) ` +
-              `rotate(${spin.toFixed(2)}deg) skewX(${skew.toFixed(2)}deg) ` +
-              `scale(${(push * stretchX).toFixed(4)}, ${(push * stretchY).toFixed(4)})`,
+              `scale(${push.toFixed(4)})`,
             transformOrigin: `${originX.toFixed(2)}% ${originY.toFixed(2)}%`,
             filter,
             willChange: 'transform, filter',
@@ -380,7 +372,7 @@ export function MetalStage() {
               image on a single layer instead would blank the object for a Poisson
               solve at every change of shape, and again on the way back up; all but the
               one or two on screen are parked at speed 0. */}
-          {POSES.slice(0, shapes).map((pose, i) => {
+          {POSES.map((pose, i) => {
             const opacity = layerOpacity(i);
             return (
               <MaskBoundary key={pose.mask} fallback={i === 0 ? undefined : null}>
