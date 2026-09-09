@@ -1,3 +1,4 @@
+import { MetalMark } from '@/components/metal-mark';
 import { Reveal, Words } from '@/components/reveal';
 
 /* The three things a project actually arrives asking for. */
@@ -8,40 +9,50 @@ const CAPABILITIES = [
 ];
 
 /**
- * The statement — the first words anyone reads on the site.
+ * The second screen: the statement, and the PLCBO wordmark in metal beside it.
  *
- * Two things shape this section. It used to pin for 260vh and light its sentence a word
- * at a time off scroll position; it gave that up so the hero could be the page's one
- * held screen. And the metal now parks the PLCBO wordmark in the right of the frame and
- * holds it there while this scrolls past, so every line here is kept to the left half
- * on wide screens rather than crossing it. The capabilities stack for the same reason —
- * three columns squeezed into half a page were four words wide each.
+ * One viewport tall, the same as the first, so the two read as two pages rather than a
+ * screen followed by a slightly taller one. `min-h` rather than `h` so a short window
+ * grows instead of clipping — and every vertical gap in here is a `clamp` against `vh`,
+ * with the statement sized `min(7.5vw, 11vh)`, because at fixed spacing the content
+ * walked straight through the minimum it was meant to sit inside: three lines of 8vw
+ * type is 328px whatever the window's height, which put this 40px past the hero on a
+ * 1366×768 laptop.
+ *
+ * The wordmark is drawn inside this section rather than by a fixed layer that travelled
+ * the page, so there is no transition into it and no extra scroll spent carrying one
+ * shape into another — you arrive on this screen and it is already here. The copy is
+ * held to the left half on wide screens to clear it, and the capabilities stack for the
+ * same reason: three columns squeezed into half a page were four words wide each.
  */
 export function Intro() {
   return (
-    /* One viewport tall, with its content centred in it, so this screen is the same
-       height as the hero's and the two read as two panels rather than a full screen
-       followed by a slightly taller one. It also puts the statement optically level
-       with the wordmark, which parks vertically centred in the frame. `min-h` rather
-       than `h`, so a narrow screen where the capabilities stack can still grow — and
-       every vertical gap in here is a `clamp` against `vh` rather than a fixed step. At
-       fixed spacing the content plus its padding came to 902px and overflowed the very
-       minimum it was supposed to sit inside; scaling the gaps with the window keeps the
-       two screens equal down to about 700px tall. Below that a three-line statement and
-       three capability rows genuinely need more room than one screen, and this grows
-       rather than clipping them.
-
-       The statement takes its own size rather than the shared `text-mega`, and that
-       size is capped against the window's *height* as well as its width:
-       `min(7.5vw, 11vh)`. Sized off width alone, three lines of it came to 328px on a
-       1366x768 laptop and pushed this screen 40px past the hero's. `text-mega` is left
-       alone because Work's heading and the contact address do not have three lines of
-       anything under them. */
     <section
       id="intro"
-      className="flex min-h-[100svh] scroll-mt-24 items-center py-[clamp(2rem,7vh,4rem)]"
+      className="relative isolate flex min-h-[100svh] scroll-mt-24 items-center py-[clamp(2rem,7vh,4rem)]"
     >
-      <div className="shell w-full">
+      {/* Parked right and running off the edge, lifted off centre to sit level with the
+          statement: this section centres its whole content block — eyebrow, heading and
+          three capability rows — so the heading lands in the upper part of it, and a
+          shape centred on the screen read as a second unrelated object lower down.
+          On a portrait screen there is no margin beside the copy to park in, so it
+          takes a band of its own instead of sitting behind the headline. The object box
+          is sized off the longer edge, which on a phone is the height, so 0.42 of 812 is
+          341px across a 375px screen — inside the margins rather than cropped by them.
+          It goes *below* the copy rather than above: above, the only clear space is
+          138px between the header and the eyebrow, and the eyebrow already names the
+          studio there. Underneath it reads as a signature. */}
+      <MetalMark
+        mask="/wordmark-mask.png"
+        scale={0.62}
+        compactScale={0.42}
+        fx={1}
+        px={-110}
+        y={-0.15}
+        compactY={0.37}
+      />
+
+      <div className="shell relative z-10 w-full">
         <div className="md:max-w-[52%]">
           <Reveal>
             <p className="eyebrow">

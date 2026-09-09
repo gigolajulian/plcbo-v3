@@ -1,5 +1,4 @@
 import { Cursor } from '@/components/cursor';
-import { MetalStage } from '@/components/metal-stage';
 import { SectionRail } from '@/components/section-rail';
 import { Clients } from '@/components/sections/clients';
 import { Connect } from '@/components/sections/connect';
@@ -22,12 +21,7 @@ export default function App() {
       <Nav />
       <SectionRail />
 
-      {/* One body of metal, fixed under the whole page, changing shape as the reader
-          descends. `main` sits above it so every section's copy stays legible and the
-          Clients band — the one section with an opaque ground — covers it outright. */}
-      <MetalStage />
-
-      <main className="relative z-10">
+      <main>
         <LiquidMetalHero
           title="PLCBO"
           subtitle="Visual identity, photography, film and digital design. Working out of the Bay Area since 2018."
