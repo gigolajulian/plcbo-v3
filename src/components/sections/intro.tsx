@@ -24,11 +24,22 @@ export function Intro() {
        followed by a slightly taller one. It also puts the statement optically level
        with the wordmark, which parks vertically centred in the frame. `min-h` rather
        than `h`, so a narrow screen where the capabilities stack can still grow — and
-       the padding is only `py-16`, because at `py-24` the content plus its padding came
-       to 902px and overflowed the very minimum it was supposed to sit inside. */
+       every vertical gap in here is a `clamp` against `vh` rather than a fixed step. At
+       fixed spacing the content plus its padding came to 902px and overflowed the very
+       minimum it was supposed to sit inside; scaling the gaps with the window keeps the
+       two screens equal down to about 700px tall. Below that a three-line statement and
+       three capability rows genuinely need more room than one screen, and this grows
+       rather than clipping them.
+
+       The statement takes its own size rather than the shared `text-mega`, and that
+       size is capped against the window's *height* as well as its width:
+       `min(7.5vw, 11vh)`. Sized off width alone, three lines of it came to 328px on a
+       1366x768 laptop and pushed this screen 40px past the hero's. `text-mega` is left
+       alone because Work's heading and the contact address do not have three lines of
+       anything under them. */
     <section
       id="intro"
-      className="flex min-h-[100svh] scroll-mt-24 items-center py-16"
+      className="flex min-h-[100svh] scroll-mt-24 items-center py-[clamp(2rem,7vh,4rem)]"
     >
       <div className="shell w-full">
         <div className="md:max-w-[52%]">
@@ -41,12 +52,12 @@ export function Intro() {
           <Words
             text="The whole picture, in-house."
             delay={1}
-            className="mt-10 font-display text-mega font-semibold tracking-tight text-foreground"
+            className="mt-[clamp(1.25rem,3.5vh,2.5rem)] font-display text-[clamp(2.5rem,min(7.5vw,11vh),6rem)] font-semibold leading-[0.94] tracking-tight text-foreground"
           />
 
-          <ul className="mt-16">
+          <ul className="mt-[clamp(1.75rem,6vh,4rem)]">
             {CAPABILITIES.map((item, i) => (
-              <li key={item.label} className="border-t border-border py-5">
+              <li key={item.label} className="border-t border-border py-[clamp(0.6rem,1.6vh,1.25rem)]">
                 <Reveal delay={i + 1}>
                   <p className="eyebrow">{item.label}</p>
                   <p className="mt-2 max-w-[42ch] text-pretty leading-relaxed text-ink-2">
