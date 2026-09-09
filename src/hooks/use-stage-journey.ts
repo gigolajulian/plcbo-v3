@@ -86,10 +86,13 @@ const FAREWELL = 'work';
  * its section reaches the top of the screen — so it begins while the previous section
  * is still being read and finishes just as the new one lands.
  *
- * ENTER is nearly a screen and a half because the melt needs room to be a movement
- * rather than a flicker. */
-const ENTER = 1.3;
-const LAND = 0.35;
+ * This was 1.3 → 0.35, which spread the change over 817px of scroll on an 860-tall
+ * window, and for 490px of that the object was a formless mass filling three quarters
+ * of the screen. Nothing in it read as one shape becoming another: the logo swelled
+ * into a smear and a wordmark turned up much later, over a different section. 0.55 of a
+ * screen is enough for the change to be a movement and short enough to be one gesture. */
+const ENTER = 1.05;
+const LAND = 0.5;
 
 export type Journey = {
   /** 0 at the first pose, 1 at the second; the fraction between is the change of shape. */

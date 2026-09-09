@@ -34,27 +34,50 @@ const SILVER = '#c9c9d2';
 /** How long the metal takes to gather itself into the mark, once it can. */
 const FORMATION_MS = 6000;
 
-/* How much a shape swells as it melts, as a multiple of its own resting size. One rule
- * for both poses rather than a molten size each, so the two converge on the same body
- * of metal at the swap — which is half of why the swap cannot be seen.
+/* How much a shape swells while it is molten, as a multiple of its resting size — one
+ * figure per driver, because the two want very different things.
  *
- * 1.7 and not the 2.3 it started at: the mass has to grow enough to stop being the
- * shape it was, but at 2.3 the melt was 128% of the viewport's width, so the moment in
- * the middle of the change was a smear running off both edges of the screen rather than
- * a body of metal you could see the whole of. */
-const MELT_SWELL = 1.7;
+ * The opening is allowed to be expansive: the metal arrives as a body with no shape at
+ * all and gathers itself into the mark, and that wants room. A change of shape mid-page
+ * does not. At the same 2.35 the mark swelled to 98% of the viewport's width and sat
+ * there formless for 490px of scroll, which is why the transition read as broken rather
+ * than as one shape becoming another — you saw the logo turn into a smear, not into a
+ * wordmark. Capped now so the mass is always something you can see the whole of. */
+const LOAD_SWELL = 2.35;
+const MELT_SWELL = 1.28;
+
+/* Rubber band.
+ *
+ * `easeInOutBack` draws the shape *back* before it lets go, flings it across, overshoots
+ * its parking spot and settles — so the travel has a beginning, a release and a landing
+ * instead of sliding at one speed. Velocity is zero at both ends, which matters: an
+ * ease that starts fast would snap the stretch on at the first frame of the change.
+ *
+ * The mass elongates along the direction it is being pulled, hardest where the travel is
+ * quickest and back to true at both ends. That is the difference between this and the
+ * spin-and-shear flourishes that came out: this one is derived from the motion rather
+ * than laid on top of it, so it is the band doing the stretching. */
+const BACK = 1.70158;
+const BACK_IO = BACK * 1.525;
+
+const easeInOutBack = (t: number) =>
+  t < 0.5
+    ? (Math.pow(2 * t, 2) * ((BACK_IO + 1) * 2 * t - BACK_IO)) / 2
+    : (Math.pow(2 * t - 2, 2) * ((BACK_IO + 1) * (2 * t - 2) + BACK_IO) + 2) / 2;
+
+/** 0 at either end of the travel, 1 where it is moving fastest. */
+const pullOf = (t: number) => 4 * t * (1 - t);
+
+/** How far the mass elongates at full pull. */
+const BAND_STRETCH = 0.24;
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
-/** Zoom has to be interpolated geometrically or the last third of it does all the work. */
-const zoom = (from: number, to: number, t: number) => from * Math.pow(to / from, t);
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 /** 0 below `from`, 1 above `to`, linear in between. */
 const ramp = (t: number, from: number, to: number) => clamp01((t - from) / (to - from));
 /** Ramps up across a→b, holds at 1 to c, ramps back down across c→d. */
 const hump = (t: number, a: number, b: number, c: number, d: number) =>
   Math.min(ramp(t, a, b), 1 - ramp(t, c, d));
-/** Slow in, slow out. */
-const ease = (t: number) => t * t * (3 - 2 * t);
 
 /** The shape never turns further than this off-face, on either axis. */
 const MAX_TILT = 30;
@@ -204,11 +227,12 @@ export function MetalStage() {
   const next = Math.min(index + 1, last);
   const blend = pos - index;
 
-  /* The melt, and the swap inside it. `hump` holds the metal at full molten across the
-     middle fifth of the change, and the crossfade sits inside that plateau — so the
-     mask being exchanged is never a shape anybody can see. */
-  const melt = hump(blend, 0, 0.4, 0.6, 1);
-  const swap = ramp(blend, 0.44, 0.56);
+  /* The melt, and the swap inside it. The metal loses its shape quickly, is held
+     formless just long enough to exchange the mask under cover, and is set again by
+     0.78 — well before the band has finished landing, so what you watch settle into
+     place is the wordmark itself rather than an anonymous mass. */
+  const melt = hump(blend, 0, 0.26, 0.42, 0.78);
+  const swap = ramp(blend, 0.3, 0.38);
 
   /* One axis, three drivers. The load formation melts the metal once, on a timer; the
      change of shape melts it again, on scroll; and taking its leave melts it a third
@@ -237,7 +261,10 @@ export function MetalStage() {
      geometry, which is the other half of why the swap cannot be seen. */
   const here = compact ? POSES[index].compact : POSES[index].wide;
   const there = compact ? POSES[next].compact : POSES[next].wide;
-  const t = ease(blend);
+  /* The travel runs on the band's easing, so position and size both draw back,
+     overshoot and settle together. */
+  const t = easeInOutBack(blend);
+  const pull = pullOf(blend);
   const rest = lerp(here.scale, there.scale, t);
 
   /* Position is `fx * 50vw + px`, so both halves interpolate and the CSS below can stay
@@ -319,7 +346,14 @@ export function MetalStage() {
     colorTint: SILVER,
     /* contain, not cover: cover crops, and the whole point is the silhouette. */
     fit: 'contain' as const,
-    scale: zoom(rest, rest * MELT_SWELL, molten) + drift.energy * 0.012 * grip,
+    scale:
+      rest *
+        (1 +
+          Math.max(
+            (1 - formation) * (LOAD_SWELL - 1),
+            Math.max(melt, exit * 0.85) * (MELT_SWELL - 1),
+          )) +
+      drift.energy * 0.012 * grip,
     /* the press also shoves the pattern away from where it landed, so the churn has a
        direction rather than just happening everywhere */
     offsetX: (drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip,
@@ -362,7 +396,8 @@ export function MetalStage() {
               `${(placeY * 100).toFixed(2)}%) ` +
               `translateY(${rise.toFixed(1)}px) ` +
               `rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg) ` +
-              `scale(${push.toFixed(4)})`,
+              `scale(${(push * (1 + BAND_STRETCH * pull)).toFixed(4)}, ` +
+              `${(push * (1 - BAND_STRETCH * 0.45 * pull)).toFixed(4)})`,
             transformOrigin: `${originX.toFixed(2)}% ${originY.toFixed(2)}%`,
             filter,
             willChange: 'transform, filter',
