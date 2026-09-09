@@ -19,8 +19,18 @@ const CAPABILITIES = [
  */
 export function Intro() {
   return (
-    <section id="intro" className="scroll-mt-24 py-32">
-      <div className="shell">
+    /* One viewport tall, with its content centred in it, so this screen is the same
+       height as the hero's and the two read as two panels rather than a full screen
+       followed by a slightly taller one. It also puts the statement optically level
+       with the wordmark, which parks vertically centred in the frame. `min-h` rather
+       than `h`, so a narrow screen where the capabilities stack can still grow — and
+       the padding is only `py-16`, because at `py-24` the content plus its padding came
+       to 902px and overflowed the very minimum it was supposed to sit inside. */
+    <section
+      id="intro"
+      className="flex min-h-[100svh] scroll-mt-24 items-center py-16"
+    >
+      <div className="shell w-full">
         <div className="md:max-w-[52%]">
           <Reveal>
             <p className="eyebrow">

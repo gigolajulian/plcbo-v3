@@ -69,11 +69,17 @@ export const POSES: Pose[] = [
        carrying on past it. Checked down to 768, where it still clears the copy by 22px,
        which is why the placement is anchored to the edge in pixels rather than scaled
        off the viewport.
+       Lifted off the viewport's centre to sit level with the statement rather than
+       below it. The Intro centres its whole content block — eyebrow, heading and three
+       capability rows — so the heading itself lands in the upper part of that block,
+       and a shape centred on the viewport read as a second, unrelated object 134px
+       lower down. At -0.15 the two occupy the same band: heading 138–453, wordmark
+       140–462.
        On a portrait screen there is no margin to park in, so it stays centred and the
        object simply leaves once the statement has been read. */
     anchor: 'intro',
     mask: '/wordmark-mask.png',
-    wide: { scale: 0.62, fx: 1, px: -110, y: 0 },
+    wide: { scale: 0.62, fx: 1, px: -110, y: -0.15 },
     compact: { scale: 0.86, fx: 0, px: 0, y: -0.04 },
   },
 ];
