@@ -3,7 +3,7 @@ import { Menu, X } from 'lucide-react';
 
 import { Mark } from '@/components/mark';
 import { Button } from '@/components/ui/button';
-import { useScrollSpy, useScrolledPast } from '@/hooks/use-scroll-spy';
+import { useScrollSpy } from '@/hooks/use-scroll-spy';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
@@ -20,14 +20,18 @@ const IDS = ['home', 'intro', ...LINKS.map((l) => l.id)];
 
 export function Nav() {
   const active = useScrollSpy(IDS);
-  const scrolled = useScrolledPast(80);
+  /* The hero is a 340vh scroll journey now, so a fixed pixel threshold would pop the
+     header over the melting mark 80px in. The spy already knows when the hero stops
+     being the section you are in, which is the same answer for any hero height and
+     stays right if that height changes. */
+  const past = active !== 'home';
   const [open, setOpen] = React.useState(false);
 
   /* The links stay out of the way while the hero owns the screen, then come back.
    * Focusing anything inside brings them straight back too, so this is never a
    * keyboard trap — the header is only visually quiet, never inert. */
   const [focusWithin, setFocusWithin] = React.useState(false);
-  const revealed = scrolled || focusWithin || open;
+  const revealed = past || focusWithin || open;
 
   React.useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -44,7 +48,7 @@ export function Nav() {
       }}
       className={cn(
         'fixed inset-x-0 top-0 z-50 transition-colors duration-500',
-        scrolled && 'border-b border-border bg-background/80 backdrop-blur-xl',
+        past && 'border-b border-border bg-background/80 backdrop-blur-xl',
       )}
     >
       <a

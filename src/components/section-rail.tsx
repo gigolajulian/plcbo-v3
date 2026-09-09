@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 
-import { useScrollSpy, useScrolledPast } from '@/hooks/use-scroll-spy';
+import { useScrollSpy } from '@/hooks/use-scroll-spy';
 import { cn } from '@/lib/utils';
 
 const SECTIONS = [
@@ -11,7 +11,10 @@ const SECTIONS = [
   { id: 'connect', label: 'Connect' },
 ];
 
-const IDS = SECTIONS.map((s) => s.id);
+/* `home` is watched but never drawn: without it in the list the spy would report the
+   first rail entry as current while the reader is still in the hero, and the rail
+   would be lit before it is shown. */
+const IDS = ['home', ...SECTIONS.map((s) => s.id)];
 
 /**
  * The rail — where you are in the page, down the right-hand edge.
@@ -32,15 +35,17 @@ const IDS = SECTIONS.map((s) => s.id);
  */
 export function SectionRail() {
   const active = useScrollSpy(IDS);
-  const scrolled = useScrolledPast(80);
   const reduceMotion = useReducedMotion();
+  /* Out of the way for the whole of the hero's journey — same condition as the
+     header, so the two can never disagree about when the hero is done. */
+  const past = active !== 'home';
 
   return (
     <nav
       aria-label="Sections"
       className={cn(
         'group fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 transition-opacity duration-500 lg:block',
-        scrolled ? 'opacity-100' : 'pointer-events-none opacity-0',
+        past ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}
     >
       <ul className="flex flex-col items-end">

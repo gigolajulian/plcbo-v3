@@ -26,17 +26,3 @@ export function useScrollSpy(ids: string[], offset = 120) {
 
   return active;
 }
-
-/** True once the reader has scrolled past `threshold` pixels. */
-export function useScrolledPast(threshold: number) {
-  const [past, setPast] = React.useState(false);
-
-  React.useEffect(() => {
-    const onScroll = () => setPast(window.scrollY > threshold);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [threshold]);
-
-  return past;
-}

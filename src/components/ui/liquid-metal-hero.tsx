@@ -6,12 +6,13 @@ import {
   liquidMetalPresets,
   type LiquidMetalProps,
 } from '@paper-design/shaders-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useMotionValueEvent, useReducedMotion } from 'framer-motion';
 
 import { Mark } from '@/components/mark';
 import { Button } from '@/components/ui/button';
 import { useFormation } from '@/hooks/use-formation';
 import { usePointerDrift } from '@/hooks/use-pointer-drift';
+import { useScrollProgress } from '@/hooks/use-parallax';
 import { asset } from '@/lib/asset';
 import { cn } from '@/lib/utils';
 
@@ -35,12 +36,21 @@ const SILVER = '#c9c9d2';
 /** How long the metal takes to gather itself into the mark, once it can. */
 const FORMATION_MS = 6000;
 
+/* The runway. 340vh of section wrapping a viewport-tall sticky stage gives 240vh of
+ * scroll during which the hero is held on screen and the metal works through its
+ * journey. It is the page's one pinned moment — the Intro below it used to pin too and
+ * gave that up for this, because two in a row reads as a demo reel. */
+const RUNWAY_VH = 340;
+
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 /** Zoom has to be interpolated geometrically or the last third of it does all the work. */
 const zoom = (from: number, to: number, t: number) => from * Math.pow(to / from, t);
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 /** 0 below `from`, 1 above `to`, linear in between. */
 const ramp = (t: number, from: number, to: number) => clamp01((t - from) / (to - from));
+/** Ramps up across a→b, holds at 1 to c, ramps back down across c→d. */
+const hump = (t: number, a: number, b: number, c: number, d: number) =>
+  Math.min(ramp(t, a, b), 1 - ramp(t, c, d));
 /** The mark never turns further than this off-face, on either axis. */
 const MAX_TILT = 30;
 /** How much of that budget the hover tilt spends; the rest is the drag's to use. */
@@ -51,6 +61,20 @@ const HOVER_TILT_Y = 13;
  * only ever approaches its limit, so the turn stays smooth however far the drag
  * runs and never hits a wall. */
 const swing = (px: number, max: number) => max * Math.tanh((px * 0.19) / max);
+
+/* Where each silhouette rests. They need separate numbers because `fit="contain"`
+ * treats them differently — the mark is 1.22:1 and fits to height in a landscape
+ * window, the wordmark is 2.76:1 and fits to width — so one shared size had the word
+ * running off both edges of the screen. Each also keeps a portrait value, for the
+ * reason the mark always did: fitted to width on a narrow screen it reads as a badge
+ * rather than a backdrop.
+ *
+ * `lift` is the shader's own offsetY axis, where negative is up. Both shapes have to
+ * leave the CTA row its ground, and the wordmark needs more of a lift than the mark
+ * because it is a band across the middle rather than a tall letter. */
+type Rest = { wide: number; compact: number; lift: number };
+const MARK_REST: Rest = { wide: 0.49, compact: 0.74, lift: -0.03 };
+const WORD_REST: Rest = { wide: 0.52, compact: 0.9, lift: -0.1 };
 
 /* Glass, over metal.
  *
@@ -101,26 +125,29 @@ function extrusion(dx: number, dy: number, depth: number) {
 }
 
 /**
- * The masked layer, behind a Suspense boundary.
+ * A masked layer, behind its own Suspense boundary.
  *
- * Turning an SVG into the distance field the shader masks with is a rasterise plus a
- * Poisson solve — seconds of work, not milliseconds. Until it lands the layer has
+ * Turning an image into the distance field the shader masks with is a rasterise plus a
+ * Poisson solve — hundreds of milliseconds, not nothing. Until it lands the layer has
  * nothing to draw and paints its flat ground over everything beneath it, which is
  * what an early version of this did: the open field came up, went black for two
  * seconds, and the mark appeared out of the dark. `suspendWhenProcessingImage` holds
  * the layer out of the tree entirely until its mask is ready, and `onReady` is what
  * starts the formation — so the two are never out of step, on any machine.
+ *
+ * `onReady` is optional because only the layer that is on screen at load has anything
+ * to say about when the opening may begin.
  */
-function MarkMetal({ onReady, ...props }: LiquidMetalProps & { onReady: () => void }) {
+function MarkMetal({ onReady, ...props }: LiquidMetalProps & { onReady?: () => void }) {
   React.useEffect(() => {
-    onReady();
+    onReady?.();
   }, [onReady]);
 
   return <LiquidMetal suspendWhenProcessingImage {...props} />;
 }
 
 /**
- * Nothing about the mask is allowed to take the page down with it.
+ * Nothing about a mask is allowed to take the page down with it.
  *
  * `suspendWhenProcessingImage` throws the image load, so a mask that 404s — a bad
  * path, a bad deploy, a cache miss — rethrows on render and unmounts the whole tree
@@ -128,13 +155,14 @@ function MarkMetal({ onReady, ...props }: LiquidMetalProps & { onReady: () => vo
  * Pages instead of the project path, and the site rendered as an empty black
  * document rather than a hero without a shader in it.
  *
- * Caught here, the hero falls back to the flat mark — the same `Mark` the nav and the
- * footer draw, so there is no second asset to keep in step. Not the shader, but the
- * right shape in the right place, and the nav, the CTAs and every section below carry
- * on regardless.
+ * The mark's layer falls back to the flat mark — the same `Mark` the nav and the
+ * footer draw, so there is no second asset to keep in step. The wordmark's layer
+ * passes `fallback={null}`: it is the second half of a scroll journey, not the hero,
+ * so if only that mask fails the metal simply never changes shape and everything else
+ * carries on. Each gets its own boundary so one failing cannot take the other with it.
  */
 class MetalBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children: React.ReactNode; fallback?: React.ReactNode },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -144,11 +172,12 @@ class MetalBoundary extends React.Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.error('[hero] the metal mask failed to load; falling back to the flat mark', error);
+    console.error('[hero] a metal mask failed to load', error);
   }
 
   render() {
     if (!this.state.failed) return this.props.children;
+    if (this.props.fallback !== undefined) return this.props.fallback;
 
     return (
       <div className="absolute inset-0 grid place-items-center">
@@ -167,6 +196,8 @@ export interface LiquidMetalHeroProps {
    * its alpha as the mask and its edges as the flow contour.
    */
   image?: string;
+  /** The shape it melts into and back out of, halfway down the journey. */
+  wordmark?: string;
   primaryCtaLabel: string;
   secondaryCtaLabel?: string;
   onPrimaryCtaClick: () => void;
@@ -178,6 +209,7 @@ export default function LiquidMetalHero({
   title,
   subtitle,
   image = asset('/mark-mask.png'),
+  wordmark = asset('/wordmark-mask.png'),
   primaryCtaLabel,
   secondaryCtaLabel,
   onPrimaryCtaClick,
@@ -185,7 +217,23 @@ export default function LiquidMetalHero({
   className,
 }: LiquidMetalHeroProps) {
   const reduceMotion = useReducedMotion();
-  const sectionRef = React.useRef<HTMLElement | null>(null);
+
+  /* Two refs with two jobs. The runway is the tall section, and its pass is the
+     journey; the stage is the viewport-sized sticky child, and it is what the pointer
+     measures against and what decides whether the shader is worth drawing. Putting
+     either on the other is a real bug: pointer coordinates taken from a 340vh box are
+     wrong by a factor of three, and a 340vh box goes on intersecting long after the
+     pin has released, so the shader would keep burning frames through the Intro. */
+  const { ref: runwayRef, progress } = useScrollProgress();
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [journey, setJourney] = React.useState(0);
+  useMotionValueEvent(progress, 'change', (v) => {
+    /* Rounded for the same reason `usePointerDrift` rounds: these numbers feed a
+       dozen shader uniforms through React, and sub-pixel scroll noise should not
+       cost a render. */
+    setJourney(Math.round(v * 1000) / 1000);
+  });
 
   /* The shader is a per-frame GPU program with no natural end. Left alone it keeps
      drawing for the whole length of the page, long after the hero has scrolled away
@@ -194,7 +242,7 @@ export default function LiquidMetalHero({
   const [live, setLive] = React.useState(true);
 
   React.useEffect(() => {
-    const node = sectionRef.current;
+    const node = stageRef.current;
     const onVisibility = () => setLive(!document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
 
@@ -230,21 +278,56 @@ export default function LiquidMetalHero({
   const [ready, setReady] = React.useState(false);
   const onReady = React.useCallback(() => setReady(true), []);
 
-  /* 0 = a shapeless body of metal, 1 = the mark. */
+  /* 0 = a shapeless body of metal, 1 = the shape set. */
   const formation = useFormation(FORMATION_MS, ready, Boolean(reduceMotion));
+
+  /* ── the journey ──────────────────────────────────────────────────────────
+     Scrolling melts the mark down, sets the wordmark out of the liquid, holds it, and
+     brings the mark back. `contour` is what makes that possible — it is the only
+     parameter that deforms the silhouette rather than the pattern painted over it, so
+     running it up melts the mask into a shapeless mass and walking it down sets a
+     shape out of that mass.
+
+     Which means the shape swap can hide *inside* the melt: at the peak there is no
+     letter on screen, only liquid, so that is where one mask hands over to the other.
+     The alternative was a crossfade between two legible shapes, and this hero already
+     tried handing one shader to another in plain view — it read as exactly what it was
+     and was deleted. */
+  const j = reduceMotion ? 0 : journey;
+
+  /* Two humps with a hold between them. The first 10% is a dead zone so a stray
+     scroll does not disturb a mark that has only just finished forming. */
+  const melt = Math.max(hump(j, 0.1, 0.38, 0.44, 0.66), hump(j, 0.74, 0.86, 0.9, 1));
+
+  /* 0 = the mark, 1 = the wordmark. Both switches sit inside a melt peak. */
+  const shape = ramp(j, 0.38, 0.44) - ramp(j, 0.86, 0.9);
+
+  /* One axis, two drivers. The load formation melts the metal once, on a timer; the
+     journey melts it again, on scroll. Whichever wants it more molten wins, so a
+     reader who starts scrolling during the opening blends into the journey instead of
+     fighting it — the same trick `grip` plays for the pointer. Every `lerp` below
+     reads set-value first, molten-value second. */
+  const molten = Math.max(1 - formation, melt);
+  const setness = 1 - molten;
 
   /* One layer, one move. There used to be a second `metaballs` layer under this one,
      covering the moment the mask spends being computed, with a 200ms crossfade
      between them — and it read as exactly what it was: a different material
-     dissolving into this one. Two shaders cannot hand over invisibly.
+     dissolving into this one. Two *different* shaders cannot hand over invisibly.
 
-     So the mask carries the whole opening on its own. It arrives with `contour` at
-     full, which is the only parameter that deforms the silhouette rather than the
-     pattern painted over it, so the letter genuinely churns out of a shapeless mass
-     instead of appearing through a dissolve. This is now a plain fade up from the
-     page ground, slow enough to read as the start of the shot rather than a layer
-     switching on. */
+     So the opening is a plain fade up from the page ground, slow enough to read as
+     the start of the shot rather than a layer switching on. */
   const markOpacity = ramp(formation, 0, 0.28);
+
+  /* The two silhouettes are separate shader instances with independent phase, so at
+     the midpoint of a swap they are two similar molten masses rather than the same
+     one. Pooling the pair's opacity through the crossing covers that: there is no
+     legible shape to protect at peak melt, and a shallow dip reads as the metal
+     gathering rather than as a cut. Raise the 0.35 if it ever ghosts. */
+  const cross = 1 - Math.abs(shape * 2 - 1);
+  const dip = 1 - 0.35 * cross;
+  const markLayerOpacity = (1 - shape) * markOpacity * dip;
+  const wordLayerOpacity = shape * markOpacity * dip;
 
   /* Pointer response is scaled by the formation, so nothing steers the metal until
      there is a mark to steer. */
@@ -283,23 +366,86 @@ export default function LiquidMetalHero({
   const originX = lerp(50, ((drift.pressX + 1) / 2) * 100, drift.pulse);
   const originY = lerp(46, ((drift.pressY + 1) / 2) * 100, drift.pulse);
 
-  /* The rise. Done here rather than through the shader's own offset: the offset is
-     measured against the fitted object box, so it moves the mark by a couple of
-     percent of the viewport where this moves it by a visible distance. */
+  /* The rise, and the opening only — the journey melts in place rather than dropping
+     back under the fold. Done here rather than through the shader's own offset: the
+     offset is measured against the fitted object box, so it moves the mark by a
+     couple of percent of the viewport where this moves it by a visible distance. */
   const rise = lerp(90, 0, formation);
 
-  /* The side wall leans opposite the tilt, so the mark keeps a consistent light. */
-  const depth = grip * (1 - drift.pulse * 0.35);
+  /* The side wall leans opposite the tilt, so the mark keeps a consistent light — and
+     it belongs to a solid, so it goes as the metal melts and comes back as it sets.
+     At load `setness` is the formation, so this is unchanged there. */
+  const depth = setness * (1 - drift.pulse * 0.35);
   const filter = extrusion(2.4 * depth - drift.x * 1.6 * grip, 2.9 * depth - drift.y * 1.2 * grip, depth);
 
-  return (
-    <section
-      ref={sectionRef}
-      id="home"
+  /* The CTAs duck for the melt, so they follow it rather than a scroll number — which
+     makes them symmetric for free, out on the way into each melt and back on the way
+     out, without a second set of thresholds to keep in step.
+
+     `melt` and not `molten`: the opening is molten too, and hanging the buttons off
+     that left them at a tenth of their opacity for the whole six seconds the mark
+     takes to gather. Their arrival is the framer transition below, as it always was;
+     this only takes them away again once scrolling melts what they sit under. */
+  const ctaOpacity = clamp01(1 - melt * 1.4);
+
+  /* Everything the two layers hold in common. Only the mask, the resting size and the
+     opacity differ, so those are passed per layer and this is spread into both. */
+  const surface = {
+    ...backdrop,
+    colorBack: CLEAR,
+    colorTint: SILVER,
+    /* contain, not cover: cover crops, and the whole point is the silhouette. */
+    fit: 'contain' as const,
+    /* the press also shoves the pattern away from where it landed, so the churn has a
+       direction rather than just happening everywhere */
+    offsetX: (drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip,
+    /* `contour` is the morph — see the journey block above. Everything else here is
+       the surface: molten and soft while it flows, banded and tight once set, which
+       is the difference between plastic and metal. */
+    softness: lerp(0.16, 0.85, molten),
+    contour: lerp(0.26, 1, molten),
+    shiftRed: lerp(0.03, 0.02, molten),
+    shiftBlue: lerp(0.04, 0.03, molten),
+    rotation: lerp(0, 7, molten),
+    /* the pointer drives the flow once there is a mark to drive */
+    angle: 64 + drift.x * 46 * grip,
+    repetition: lerp(3.8, 1.5, molten) + (drift.y * 0.35 + drift.pulse * 0.9) * grip,
+    distortion:
+      lerp(0.28, 1, molten) +
+      (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip,
+    frame: reduceMotion ? 8200 : 0,
+  };
+
+  const layerStyle = {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+  };
+
+  /** A layer nobody can see is parked, not merely transparent. */
+  const speedFor = (opacity: number) =>
+    reduceMotion || !live || opacity < 0.01
+      ? 0
+      : lerp(0.42, 1.1, molten) + drift.energy * 0.3 + drift.pulse * 0.6;
+
+  /* Where a silhouette sits and how big it is at rest, inflated back toward a single
+     shapeless mass as it melts — so both shapes converge on the same body of metal at
+     the swap, which is half of why the swap cannot be seen. */
+  const geometry = (rest: Rest) => ({
+    scale: zoom(compact ? rest.compact : rest.wide, 1.15, molten) + drift.energy * 0.012 * grip,
+    offsetY:
+      lerp(rest.lift, -0.03, molten) +
+      (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip,
+  });
+
+  const stage = (
+    <div
+      ref={stageRef}
       {...handlers}
-      /* No overflow-hidden on the section itself — the shader layer below clips
-         itself, and clipping here would cut the CTA row on a short window. */
-      className={cn('relative isolate min-h-[100svh]', className)}
+      /* No overflow-hidden here — the shader layer below clips itself, and clipping at
+         this level would cut the CTA row on a short window. */
+      className="sticky top-0 h-[100svh]"
     >
       {/* ── the metal ──────────────────────────────────────────────────────
         Scoped to the hero rather than fixed at z-index -10. A negative z-index
@@ -310,9 +456,10 @@ export default function LiquidMetalHero({
             hands back no WebGL context at all */}
         <div className="absolute inset-0 bg-background" />
 
-
-        {/* The mark. With an image the `shape` prop is ignored: the metal fills the
-            logo's alpha and everything outside it stays transparent. */}
+        {/* Both silhouettes. With an image the `shape` prop is ignored: the metal
+            fills the mask's alpha and everything outside it stays transparent. They
+            share this one transformed wrapper, so the tilt, the drag, the ripple and
+            the extrusion apply to whichever is visible without being duplicated. */}
         <div className="absolute inset-0" style={{ perspective: '1500px' }}>
           <div
             className="absolute inset-0"
@@ -323,56 +470,33 @@ export default function LiquidMetalHero({
               willChange: 'transform, filter',
             }}
           >
+            {/* Two masks, both mounted for the life of the hero. Swapping `image` on
+                one layer instead would blank the hero for the length of a Poisson
+                solve every time the reader crossed a transition — and again on the
+                way back up. Two layers is fewer moving parts than making one layer
+                safe to re-mask. Separate Suspense boundaries so the wordmark's mask
+                being slower cannot hold the mark's opening back. */}
             <MetalBoundary>
               <React.Suspense fallback={null}>
                 <MarkMetal
-                  {...backdrop}
+                  {...surface}
                   onReady={onReady}
                   image={image}
-                  colorBack={CLEAR}
-                  colorTint={SILVER}
-                  /* contain, not cover: cover crops, and the whole point is the
-                     silhouette. */
-                  fit="contain"
-                  scale={zoom(1.15, compact ? 0.74 : 0.49, formation) + drift.energy * 0.012 * grip}
-                  /* the rise: it comes up from under the fold and settles just above
-                     centre, where the CTA row leaves it room */
-                  /* the press also shoves the pattern away from where it landed, so
-                     the churn has a direction rather than just happening everywhere */
-                  offsetY={-0.03 + (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip}
-                  offsetX={(drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip}
-                  /* `contour` is the morph. It is the only parameter that touches the
-                     silhouette rather than the pattern painted over it — the shader
-                     calls it the strength of the distortion on the shape edges — so
-                     run it high and the mask churns into a shapeless body of metal,
-                     walk it down and the mark sets out of it. Everything else here is
-                     the surface: molten and soft on the way in, banded and tight at
-                     rest, which is the difference between plastic and metal. */
-                  softness={lerp(0.85, 0.16, formation)}
-                  contour={lerp(1, 0.26, formation)}
-                  shiftRed={lerp(0.02, 0.03, formation)}
-                  shiftBlue={lerp(0.03, 0.04, formation)}
-                  rotation={lerp(7, 0, formation)}
-                  /* the pointer drives the flow once there is a mark to drive */
-                  angle={64 + drift.x * 46 * grip}
-                  repetition={lerp(1.5, 3.8, formation) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
-                  distortion={
-                    lerp(1, 0.28, formation) +
-                    (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
-                  }
-                  speed={
-                    reduceMotion || !live
-                      ? 0
-                      : lerp(1.1, 0.42, formation) + drift.energy * 0.3 + drift.pulse * 0.6
-                  }
-                  frame={reduceMotion ? 8200 : 0}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: markOpacity,
-                  }}
+                  {...geometry(MARK_REST)}
+                  speed={speedFor(markLayerOpacity)}
+                  style={{ ...layerStyle, opacity: markLayerOpacity }}
+                />
+              </React.Suspense>
+            </MetalBoundary>
+
+            <MetalBoundary fallback={null}>
+              <React.Suspense fallback={null}>
+                <MarkMetal
+                  {...surface}
+                  image={wordmark}
+                  {...geometry(WORD_REST)}
+                  speed={speedFor(wordLayerOpacity)}
+                  style={{ ...layerStyle, opacity: wordLayerOpacity }}
                 />
               </React.Suspense>
             </MetalBoundary>
@@ -386,19 +510,18 @@ export default function LiquidMetalHero({
         <div className="grain absolute inset-0" />
       </div>
 
-      {/* The mark carries the name visually. This keeps it in the document. */}
-      <h1 className="sr-only">
-        {title}
-        {subtitle ? ' — ' + subtitle : ''}
-      </h1>
-
       <motion.div
         className="absolute inset-x-0 bottom-0 z-10 flex justify-center px-6 pb-14 sm:pb-16"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
+        <div
+          className="flex flex-col items-center gap-4 sm:flex-row"
+          /* Not clickable while invisible — a faded button is still a target, and one
+             floating over molten metal is not something anyone meant to press. */
+          style={{ opacity: ctaOpacity, pointerEvents: ctaOpacity < 0.2 ? 'none' : 'auto' }}
+        >
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button
               onClick={onPrimaryCtaClick}
@@ -425,6 +548,26 @@ export default function LiquidMetalHero({
           )}
         </div>
       </motion.div>
+    </div>
+  );
+
+  return (
+    <section
+      ref={runwayRef}
+      id="home"
+      /* Reduced motion gets no runway at all, rather than the same runway with the
+         journey switched off: a reader who asked for less motion should not have to
+         scroll through 240vh of a held screen to reach the page. */
+      className={cn('relative isolate', className)}
+      style={reduceMotion ? { minHeight: '100svh' } : { height: `${RUNWAY_VH}vh` }}
+    >
+      {/* The mark carries the name visually. This keeps it in the document. */}
+      <h1 className="sr-only">
+        {title}
+        {subtitle ? ' — ' + subtitle : ''}
+      </h1>
+
+      {stage}
     </section>
   );
 }
