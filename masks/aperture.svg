@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+  <!-- An iris: a ring of blades around a hexagonal opening.
+       Only the ALPHA of the rendered PNG reaches the shader, so every hole has to be
+       a subpath of this one evenodd path. Drawing them as white shapes on top looks
+       right in a viewer and is completely opaque in the alpha channel — which is how
+       the first cut of this file ended up a plain washer. -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M500 30 A470 470 0 1 1 499.9 30 Z
+    M500 214 L748 357 L748 643 L500 786 L252 643 L252 357 Z" />
+</svg>

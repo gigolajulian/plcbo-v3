@@ -10,7 +10,11 @@ export function useScrollSpy(ids: string[], offset = 120) {
       let current = ids[0] ?? '';
       for (const id of ids) {
         const el = document.getElementById(id);
-        if (el && el.offsetTop <= line) current = id;
+        /* Measured against the document, not `offsetTop`. `offsetTop` is relative to
+           the nearest positioned ancestor, and `#intro` now lives inside the hero's
+           positioned runway so it can be held on screen — which made its reported
+           position the offset within the hero rather than down the page. */
+        if (el && el.getBoundingClientRect().top + window.scrollY <= line) current = id;
       }
       setActive(current);
     };

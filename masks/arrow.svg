@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620">
+  <!-- Send. One path: a shaft running into a head, so it stays a single solid at
+       any size rather than two pieces that can separate as the metal flows. -->
+  <path fill="#000" d="
+    M60 250 h620 V96 L1150 310 L680 524 V370 H60 Z" />
+</svg>
