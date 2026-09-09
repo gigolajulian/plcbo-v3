@@ -23,10 +23,10 @@ const GRAPHITE = '#83806f';
  * committed, rather than hotlinked the way the upstream component did — a client wall
  * that goes blank when someone else's CDN moves a file is worse than no wall.
  *
- * Three of the seven have no published mark at all: UKIYO'S UNKNOWN and Jojo's Chicken
- * both set their name as live type in the page header, and SAGO was never pinned to a
- * specific company. Those render as type until a file arrives — the cell is the same
- * either way, so dropping a logo in later is a one-line change. */
+ * Three of the seven have no mark published anywhere to pull from: Ukiyo's Unknown has
+ * no favicon and no logo asset on its store, and Jojo's Hot Chicken and SAGO set their
+ * names as live type. They render as type here for the same reason, in the same cell —
+ * so dropping a file in later is a one-line change. */
 const CLIENTS: Logo[] = [
   { name: 'Google', src: '/clients/google.svg', width: 272, height: 92 },
   { name: 'WIRED', src: '/clients/wired.svg', width: 125, height: 25 },
@@ -34,7 +34,7 @@ const CLIENTS: Logo[] = [
   { name: 'JUBO', src: '/clients/jubo.png', width: 640, height: 300 },
   { name: "Ukiyo's Unknown" },
   { name: 'SAGO' },
-  { name: "Jojo's Chicken" },
+  { name: "Jojo's Hot Chicken" },
 ];
 
 export function Clients() {

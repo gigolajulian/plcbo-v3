@@ -13,6 +13,24 @@ export type Logo = {
   height?: number;
 };
 
+/* How much bigger or smaller than the base height a mark is drawn, so that every mark
+ * covers roughly the same area of the cell.
+ *
+ * Setting them all to one height is the obvious thing and it is what makes a client wall
+ * look wrong: height is not what the eye measures, area is. At a flat 20px these four ran
+ * from 43px wide (JUBO, 2.1:1) to 113px (Aurora, 5.6:1), so the widest mark carried two
+ * and a half times the ink of the narrowest and read as the important client.
+ *
+ * Area is `h² × aspect`, so holding it constant means `h ∝ 1/√aspect`. REF is the aspect
+ * that comes out at exactly the base height; the clamp stops a future extreme — a very
+ * long lockup, or a square badge — from being scaled into nothing or over the cell. */
+const REF_ASPECT = 3.5;
+
+function opticalScale({ width, height }: Logo) {
+  if (!width || !height) return 1;
+  return Math.min(1.35, Math.max(0.75, Math.sqrt(REF_ASPECT / (width / height))));
+}
+
 export type LogoCloudProps = React.ComponentProps<'div'> & {
   logos: Logo[];
 };
@@ -62,13 +80,18 @@ function LogoCard({ logo }: { logo: Logo }) {
       {logo.src ? (
         <img
           alt={logo.name}
-          className="pointer-events-none h-4 w-auto select-none md:h-5"
+          /* The base height is a variable rather than an `h-*` class so the per-logo
+             correction can multiply it and still change at the breakpoint. */
+          className="pointer-events-none w-auto select-none [--logo-h:1rem] md:[--logo-h:1.25rem]"
           height={logo.height}
           loading="lazy"
           src={asset(logo.src)}
           /* Not a Tailwind class: `brightness-0` and the paper band's own colour would
              both want the filter property, and this one is unconditional. */
-          style={{ filter: 'brightness(0)' }}
+          style={{
+            filter: 'brightness(0)',
+            height: `calc(var(--logo-h) * ${opticalScale(logo).toFixed(3)})`,
+          }}
           width={logo.width}
         />
       ) : (
