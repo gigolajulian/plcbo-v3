@@ -22,65 +22,51 @@ export interface LiquidMetalHeroProps {
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 const ramp = (t: number, from: number, to: number) => clamp01((t - from) / (to - from));
-/** Ramps up across `a → b`, holds at 1 through `c`, ramps back down across `c → d`. */
+/** Ramps up across `a -> b`, holds at 1 through `c`, ramps back down across `c -> d`. */
 const hump = (t: number, a: number, b: number, c: number, d: number) =>
   Math.min(ramp(t, a, b), 1 - ramp(t, c, d));
 
-/* Where each silhouette wants to sit.
+/* Where the shared frame sits for each silhouette.
  *
- * The mark is 1.22:1 and parks hard right, bleeding off the edge — an object the page
- * is a window onto. The wordmark is 2.76:1 and fits to width, so the same position
- * would push most of the name off screen; it comes to the middle to be read, then the
- * mark takes the margin back. The object travelling is not decoration, it is the only
- * way both shapes get a composition that suits them. */
+ * The mark parks hard right and bleeds off the edge — an object the page is a window
+ * onto. The wordmark comes to the middle, because it has to be read. Both shapes live
+ * at the centre of one frame now, so this moves the frame rather than the shape. */
 const MARK = { fx: 1, px: -230, y: -0.2 };
 const WORD = { fx: 0, px: 0, y: -0.1 };
 
-/* The filter that makes the two bodies one.
- *
- * Blur the pair together and then push alpha through a steep gain, and anything that
- * was faint disappears while anything that overlapped becomes solid. That threshold is
- * the whole point: it is what stops a half-faded shape reading as a ghost of itself.
- * The first version of this hero crossfaded the two masks and you could read both at
- * once, which is the one thing a morph must never show.
- *
- * At rest the filter is removed outright rather than driven to identity — a filter with
- * a zero blur still forces an offscreen pass every frame, and the resting hero is what
- * most people will ever see. */
-const FUSE_BLUR = 36;
-const FUSE_GAIN = 18;
-const FUSE_BIAS = 7;
+/* Both fields share a 1400x506 canvas, so one scale drives two very different shapes:
+ * the mark is fitted to that height and takes 44% of the width, the wordmark fills it.
+ * These are the multipliers that land each at the size it wants. */
+const MARK_SCALE = 0.8;
+const WORD_SCALE = 0.636;
+const MARK_SCALE_COMPACT = 1.92;
+const WORD_SCALE_COMPACT = 0.9;
 
 /**
  * The first screen, and the only pinned moment on the page.
  *
- * Scrolling drives the metal rather than a timer: the mark melts into a shapeless body,
- * sets as the PLCBO wordmark, holds, melts again and returns to the mark as the hero
- * releases. Two silhouettes, two transitions — the four-shape version was offered and
- * the brand reading chosen over it.
+ * Scrolling drives the metal rather than a timer: the mark becomes the PLCBO wordmark
+ * and returns. Two silhouettes, two transitions.
  *
- * The first version of this hid a crossfade inside the melt and assumed `contour: 1`
- * left no legible shape to give it away. It does not: both silhouettes stayed readable
- * at full melt, so you saw the wordmark and the mark at once, each half transparent.
- * No tuning of a crossfade fixes that, because the fault is the crossfade.
+ * Getting that to read as one shape becoming another took three attempts, and the first
+ * two are worth recording because both are the obvious thing to reach for. Crossfading
+ * two shader layers shows both silhouettes at once — `contour` does not destroy a shape
+ * at full melt, so there is no moment to hide a swap inside. Fusing those layers under a
+ * blur-and-threshold filter does produce a single body, but a 36px gaussian over the
+ * canvas destroys what the material is made of: the chrome's character is its banding,
+ * and blurred it is grey smoke.
  *
- * So the two bodies are made into one instead. Both layers sit under a single blur and
- * alpha-threshold filter: blurred together, anything faint is erased and anything that
- * overlapped is welded solid, so two shapes become one mass and then one shape again.
- * That is a real change of silhouette rather than a dissolve between two of them, and
- * it is also what liquid does when it pools and separates.
+ * Both were working outside the shader. Inside it the silhouette is a single sample from
+ * a preprocessed distance field, and a distance field is the one representation of a
+ * shape that interpolates correctly — so the morph belongs there, and the material never
+ * has to be touched at all. See `morph-metal.tsx`.
  *
- * Both layers stay mounted for the life of the hero. Swapping `image` on a single layer
- * is not an option: `suspendWhenProcessingImage` is what lets `MaskBoundary` catch a
- * missing mask instead of rendering an empty document, and it unmounts the layer while
- * a new mask is solved — so a single-layer swap would blank the hero mid-scroll, every
- * time the reader scrubbed back over it.
+ * What is left here is choreography. The melt no longer has to obliterate anything, so
+ * it only loosens the surface while the shape is in motion.
  *
  * The runway only exists from `md` up. Below that the section is one screen tall,
  * `useScrollProgress` reports a container it cannot pin as finished, and the journey
- * lands on its own resting state — the mark, set — with the second layer at zero
- * opacity and, by `layerOpacity`, not drawing. Two full-screen shader programs on a
- * phone GPU is the one cost here that is not worth finding out about in the wild.
+ * lands on its resting state — the mark, set.
  */
 export default function LiquidMetalHero({
   title,
@@ -105,33 +91,26 @@ export default function LiquidMetalHero({
   useMotionValueEvent(progress, 'change', (v) => setJourney(Math.round(v * 1000) / 1000));
 
   const j = reduceMotion ? 0 : journey;
-  /* Each melt holds at 1 for a stretch rather than touching it in passing: the handover
-     happens inside that plateau, and it needs room. */
-  const melt = Math.max(hump(j, 0.08, 0.3, 0.46, 0.6), hump(j, 0.72, 0.84, 0.94, 1));
 
-  /* The handover is sequential, not a crossfade. The arriving shape joins the mass
-     first, both are briefly one fused body, and only then does the leaving shape go.
-     Run as a crossfade the two would each sit at half alpha in the middle, and half
-     alpha is exactly what the threshold erases — the mass would thin out and tear in
-     the one frame it most needs to look continuous. */
-  const markOpacity = clamp01(1 - ramp(j, 0.39, 0.46) + ramp(j, 0.84, 0.88));
-  const wordOpacity = clamp01(ramp(j, 0.3, 0.37) - ramp(j, 0.9, 0.94));
+  /* 0 = the mark, 1 = the wordmark. This is the shape itself, not a fade between two of
+     them: the hero holds each silhouette, then spends a long stretch of scroll genuinely
+     between the two. */
+  const morph = clamp01(ramp(j, 0.14, 0.42) - ramp(j, 0.64, 0.9));
 
-  /* Position moves on its own ramp, wholly inside the melt, so neither silhouette is
-     ever seen travelling. */
-  const pos = clamp01(ramp(j, 0.3, 0.46) - ramp(j, 0.84, 0.96));
+  /* 1 while a transformation is under way. The melt rides this at half strength — enough
+     to loosen the surface and let the metal run, nowhere near enough to erase the shape,
+     which is no longer its job. */
+  const transition = Math.max(hump(j, 0.14, 0.26, 0.3, 0.42), hump(j, 0.64, 0.76, 0.8, 0.9));
+  const melt = transition * 0.5;
+
   const place = {
-    fx: lerp(MARK.fx, WORD.fx, pos),
-    px: lerp(MARK.px, WORD.px, pos),
-    y: lerp(MARK.y, WORD.y, pos),
+    fx: lerp(MARK.fx, WORD.fx, morph),
+    px: lerp(MARK.px, WORD.px, morph),
+    y: lerp(MARK.y, WORD.y, morph),
   };
 
-  const fused = melt > 0.01;
-
-  /* The copy follows the state of the metal, not the scroll: present whenever there is
-     a set shape to read it against, gone while there is only liquid. One expression, so
-     it is symmetric on the way back up for free. */
-  const copyOpacity = clamp01(1 - melt * 1.4);
+  /* The copy steps back while the metal is changing and returns once it has settled. */
+  const copyOpacity = clamp01(1 - transition * 1.2);
 
   return (
     <section
@@ -151,57 +130,19 @@ export default function LiquidMetalHero({
           {subtitle ? ' — ' + subtitle : ''}
         </h1>
 
-        <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0" focusable="false">
-          <defs>
-            <filter
-              id="metal-fuse"
-              x="-25%"
-              y="-25%"
-              width="150%"
-              height="150%"
-              colorInterpolationFilters="sRGB"
-            >
-              <feGaussianBlur in="SourceGraphic" stdDeviation={melt * FUSE_BLUR} result="spread" />
-              <feColorMatrix
-                in="spread"
-                type="matrix"
-                values={`1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${lerp(1, FUSE_GAIN, melt).toFixed(2)} ${(-lerp(0, FUSE_BIAS, melt)).toFixed(2)}`}
-              />
-            </filter>
-          </defs>
-        </svg>
-
-        <div
-          className="absolute inset-0"
-          style={{ filter: fused ? 'url(#metal-fuse)' : undefined }}
-        >
-          <MetalMark
-            mask="/mark-mask.png"
-            scale={0.46}
-            compactScale={0.56}
-            fx={place.fx}
-            px={place.px}
-            y={place.y}
-            compactY={-0.26}
-            melt={melt}
-            layerOpacity={markOpacity}
-            primary
-          />
-
-          {/* Fits to width rather than height, so it carries a larger resting scale to
-              read as the same object at the same distance rather than a smaller one. */}
-          <MetalMark
-            mask="/wordmark-mask.png"
-            scale={0.62}
-            compactScale={0.86}
-            fx={place.fx}
-            px={place.px}
-            y={place.y}
-            compactY={-0.12}
-            melt={melt}
-            layerOpacity={wordOpacity}
-          />
-        </div>
+        <MetalMark
+          mask="/morph-a.png"
+          maskB="/morph-b.png"
+          morph={morph}
+          scale={lerp(MARK_SCALE, WORD_SCALE, morph)}
+          compactScale={lerp(MARK_SCALE_COMPACT, WORD_SCALE_COMPACT, morph)}
+          fx={place.fx}
+          px={place.px}
+          y={place.y}
+          compactY={-0.26}
+          melt={melt}
+          primary
+        />
 
         <div
           className="shell relative z-10"

@@ -9,6 +9,7 @@ import {
 import { useReducedMotion } from 'framer-motion';
 
 import { Mark } from '@/components/mark';
+import { MorphMetal } from '@/components/morph-metal';
 import { useFormation } from '@/hooks/use-formation';
 import { usePointerDrift } from '@/hooks/use-pointer-drift';
 import { asset } from '@/lib/asset';
@@ -152,12 +153,20 @@ export interface MetalMarkProps {
    * shader values to keep in sync: whichever driver wants it more molten wins, and an
    * early scroll blends into the opening instead of fighting it.
    */
+  /**
+   * A second silhouette to morph into, as `morph` runs 0 to 1.
+   *
+   * Both masks must share pixel dimensions: the vertex shader carries one
+   * `u_imageAspectRatio`, derived from the first texture, so a second field of a
+   * different shape would be sampled through the wrong mapping.
+   */
+  maskB?: string;
+  /** 0 = `mask`, 1 = `maskB`. Ignored without `maskB`. */
+  morph?: number;
   melt?: number;
   /**
-   * Multiplies this layer's own opacity, for crossfading two masks in one place.
-   *
-   * At 0 the layer also stops drawing. Two full-screen shader programs running when
-   * only one is visible is the cost that makes a second silhouette unaffordable.
+   * Multiplies this layer's own opacity. At 0 the layer also stops drawing, so a shape
+   * parked off screen costs nothing.
    */
   layerOpacity?: number;
   /**
@@ -192,6 +201,8 @@ export function MetalMark({
   compactFx = 0,
   compactPx = 0,
   compactY = 0,
+  maskB,
+  morph = 0,
   melt = 0,
   layerOpacity = 1,
   primary = false,
@@ -296,6 +307,42 @@ export function MetalMark({
      start of the shot rather than a layer switching on. */
   const opacity = (primary ? ramp(formation, 0, 0.28) : 1) * clamp01(layerOpacity);
 
+  /* The tuning lives in one object because two components consume it. `contour` is the
+     only parameter that deforms the silhouette rather than the pattern painted over it,
+     so it is what lets the opening churn out of a shapeless mass. At rest it stays low,
+     where the outline is intact. Everything else here is the surface: molten and soft
+     on the way in, banded and tight once set, which is the difference between plastic
+     and metal. */
+  const material = {
+    colorBack: CLEAR,
+    colorTint: SILVER,
+    scale: (compact ? compactScale : scale) * (1 + molten * 1.35),
+    offsetX: (drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip,
+    offsetY: (drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip,
+    softness: lerp(0.16, 0.85, molten),
+    contour: lerp(0.26, 1, molten),
+    shiftRed: lerp(0.03, 0.02, molten),
+    shiftBlue: lerp(0.04, 0.03, molten),
+    rotation: lerp(0, 7, molten),
+    angle: 64 + drift.x * 46 * grip,
+    repetition: lerp(3.8, 1.5, molten) + (drift.y * 0.35 + drift.pulse * 0.9) * grip,
+    distortion:
+      lerp(0.28, 1, molten) +
+      (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip,
+    speed:
+      reduceMotion || !live || opacity < 0.004
+        ? 0
+        : lerp(0.42, 1.1, molten) + drift.energy * 0.3 + drift.pulse * 0.6,
+    frame: reduceMotion ? 8200 : 0,
+    style: {
+      position: 'absolute' as const,
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      opacity,
+    },
+  };
+
   return (
     <div
       ref={frameRef}
@@ -328,49 +375,25 @@ export function MetalMark({
             }
           >
             <React.Suspense fallback={null}>
-              <Masked
-                {...backdrop}
-                onReady={primary ? onReady : undefined}
-                image={asset(mask)}
-                colorBack={CLEAR}
-                colorTint={SILVER}
-                /* contain, not cover: cover crops, and the whole point is the
-                   silhouette. */
-                fit="contain"
-                scale={(compact ? compactScale : scale) * (1 + molten * 1.35)}
-                offsetX={(drift.x * 0.02 - drift.pressX * drift.pulse * 0.045) * grip}
-                offsetY={(drift.y * 0.02 - drift.pressY * drift.pulse * 0.045) * grip}
-                /* `contour` is the only parameter that deforms the silhouette rather
-                   than the pattern painted over it, so it is what lets the opening churn
-                   out of a shapeless mass. At rest it stays low, where the outline is
-                   intact. Everything else here is the surface: molten and soft on the
-                   way in, banded and tight once set, which is the difference between
-                   plastic and metal. */
-                softness={lerp(0.16, 0.85, molten)}
-                contour={lerp(0.26, 1, molten)}
-                shiftRed={lerp(0.03, 0.02, molten)}
-                shiftBlue={lerp(0.04, 0.03, molten)}
-                rotation={lerp(0, 7, molten)}
-                angle={64 + drift.x * 46 * grip}
-                repetition={lerp(3.8, 1.5, molten) + (drift.y * 0.35 + drift.pulse * 0.9) * grip}
-                distortion={
-                  lerp(0.28, 1, molten) +
-                  (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
-                }
-                speed={
-                  reduceMotion || !live || opacity < 0.004
-                    ? 0
-                    : lerp(0.42, 1.1, molten) + drift.energy * 0.3 + drift.pulse * 0.6
-                }
-                frame={reduceMotion ? 8200 : 0}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity,
-                }}
-              />
+              {maskB ? (
+                <MorphMetal
+                  imageA={asset(mask)}
+                  imageB={asset(maskB)}
+                  morph={morph}
+                  onReady={primary ? onReady : undefined}
+                  {...material}
+                />
+              ) : (
+                <Masked
+                  {...backdrop}
+                  image={asset(mask)}
+                  onReady={primary ? onReady : undefined}
+                  /* contain, not cover: cover crops, and the whole point is the
+                     silhouette. */
+                  fit="contain"
+                  {...material}
+                />
+              )}
             </React.Suspense>
           </MaskBoundary>
         </div>
