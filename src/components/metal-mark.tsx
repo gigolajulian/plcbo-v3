@@ -145,6 +145,22 @@ export interface MetalMarkProps {
   compactPx?: number;
   compactY?: number;
   /**
+   * Melt driven from outside, 0 = the shape is set, 1 = a shapeless body of metal.
+   *
+   * The opening already melts the mark once, on a timer. This is the same axis offered
+   * to a caller, so the hero's scroll journey can melt it again without a second set of
+   * shader values to keep in sync: whichever driver wants it more molten wins, and an
+   * early scroll blends into the opening instead of fighting it.
+   */
+  melt?: number;
+  /**
+   * Multiplies this layer's own opacity, for crossfading two masks in one place.
+   *
+   * At 0 the layer also stops drawing. Two full-screen shader programs running when
+   * only one is visible is the cost that makes a second silhouette unaffordable.
+   */
+  layerOpacity?: number;
+  /**
    * Whether this one answers the pointer and plays the opening. Only the mark on the
    * first screen does: it is the thing the site opens on, and a second shape lower down
    * that tilted and could be thrown would be a toy rather than an interaction.
@@ -176,6 +192,8 @@ export function MetalMark({
   compactFx = 0,
   compactPx = 0,
   compactY = 0,
+  melt = 0,
+  layerOpacity = 1,
   primary = false,
   className,
 }: MetalMarkProps) {
@@ -220,7 +238,10 @@ export function MetalMark({
   /* 0 = a shapeless body of metal, 1 = the shape set. Only the opening plays this; the
      wordmark is simply there when you arrive at its screen. */
   const formation = useFormation(FORMATION_MS, ready, Boolean(reduceMotion) || !primary);
-  const molten = 1 - formation;
+  /* One axis, two drivers. `formation` is the opening; `melt` is whatever the caller is
+     doing to it now. Taking the max means neither has to know about the other. */
+  const molten = Math.max(1 - formation, clamp01(melt));
+  const set = 1 - molten;
 
   /* Pointer response is scaled by the formation, so nothing steers the metal until
      there is a shape to steer.
@@ -231,7 +252,7 @@ export function MetalMark({
      hidden at mount — a background tab, a restore from bfcache, an embedded view — came
      back with the handlers stripped off and a hero that ignored the cursor. */
   const { drift, handlers } = usePointerDrift(primary && !reduceMotion);
-  const grip = primary ? formation : 0;
+  const grip = primary ? set : 0;
 
   /* The tilt is a real rotation of the plane the shader is drawn on, under a perspective
      — the shape turns to face the cursor rather than sliding around under it. Dragging
@@ -258,7 +279,7 @@ export function MetalMark({
      they are scaled by how big this shape is: a seven-pixel wall on a small shape is a
      different object from one on the hero's mark. */
   const depth =
-    (primary ? formation : 1) *
+    set *
     (1 - drift.pulse * 0.35) *
     clamp01((compact ? compactScale : scale) / 0.49);
   const filter = extrusion(
@@ -273,7 +294,7 @@ export function MetalMark({
 
   /* The opening is a plain fade up from the page ground, slow enough to read as the
      start of the shot rather than a layer switching on. */
-  const opacity = primary ? ramp(formation, 0, 0.28) : 1;
+  const opacity = (primary ? ramp(formation, 0, 0.28) : 1) * clamp01(layerOpacity);
 
   return (
     <div
@@ -337,7 +358,7 @@ export function MetalMark({
                   (drift.energy * 0.04 + Math.abs(drift.y) * 0.04 + drift.pulse * 0.18) * grip
                 }
                 speed={
-                  reduceMotion || !live
+                  reduceMotion || !live || opacity < 0.004
                     ? 0
                     : lerp(0.42, 1.1, molten) + drift.energy * 0.3 + drift.pulse * 0.6
                 }
