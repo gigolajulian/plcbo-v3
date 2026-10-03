@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,7 +8,7 @@
       name="description"
       content="PLCBO is a creative studio working in visual identity, photography, film and digital design. Out of the Bay Area since 2018."
     />
-    <meta name="theme-color" content="#08080a" />
+    <meta name="theme-color" content="#f4f4f3" />
     <link rel="icon" href="./mark.svg" type="image/svg+xml" />
 
     <meta property="og:type" content="website" />
@@ -17,12 +17,25 @@
       property="og:description"
       content="A creative studio working in visual identity, photography, film and digital design."
     />
-    <meta property="og:image" content="/img/hero.webp" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <!-- The typeface is self-hosted and declared in src/index.css. No Google Fonts:
-         that was a render-blocking stylesheet and two DNS round trips for three
-         families the site no longer uses. -->
+    <!--  Three faces, three jobs — the structure the reference runs on.
+          Archivo is the grotesque that does the work; Bodoni Moda is the didone the
+          wordmark and the accent words are set in; Ballet is the Spencerian script
+          that titles the sections.
+
+          All three are OFL. That is the point: the face this replaces was OPTI
+          Univers, an unlicensed Univers clone that was shipping on a public URL, and
+          the obvious matches for the reference (Helvetica Now, PP Editorial) are both
+          commercial. Preconnect because gstatic is a second origin and the font files
+          are on the critical path for a page whose first screen is almost entirely
+          type. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Ballet:opsz@16..72&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

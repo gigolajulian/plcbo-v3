@@ -8,6 +8,7 @@ import {
 } from 'framer-motion';
 
 import { Reveal } from '@/components/reveal';
+import { SectionHead } from '@/components/sections/section-head';
 import { asset } from '@/lib/asset';
 import { cn } from '@/lib/utils';
 
@@ -85,23 +86,18 @@ export function Work() {
   };
 
   return (
-    <section id="work" className="scroll-mt-24 py-32">
-      {/* Work opens on its own terms — a name set against the count, not the same
-          eyebrow / rule / heading / lede stack that Services and Studio share. */}
-      <header className="shell mb-20 flex flex-wrap items-end justify-between gap-8">
-        <Reveal>
-          <p className="eyebrow mb-5">Selected work</p>
-          <h2 className="font-display text-mega font-semibold tracking-tight text-foreground">
-            Work
-          </h2>
-        </Reveal>
-        <Reveal delay={1}>
-          <p className="max-w-xs text-pretty leading-relaxed text-ink-2">
-            Identity systems, campaigns, editorial shoots and the sites they live on.
-            Five recent projects.
-          </p>
-        </Reveal>
-      </header>
+    <section id="work" className="scroll-mt-24 py-[clamp(4rem,12vh,8rem)]">
+      {/* Work used to open on its own bespoke stack. It now shares the script head
+          with every other section: three different heading treatments on one page was
+          the reason nothing read as a level. */}
+      <div className="shell">
+        <SectionHead
+          index="01"
+          label="Selected work"
+          title="Works"
+          lede="Identity systems, campaigns, editorial shoots and the sites they live on. Five recent projects."
+        />
+      </div>
 
       <ul
         className="border-t border-border"

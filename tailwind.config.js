@@ -43,13 +43,15 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        /* PLCBO dark cut — the tokens the site actually designs against */
+        /* the tokens the site actually designs against */
         ink: {
           DEFAULT: 'hsl(var(--ink))',
           2: 'hsl(var(--ink-2))',
           3: 'hsl(var(--ink-3))',
         },
-        violet: {
+        /* The identity system's accent, restored. Named for what it is rather than
+           for the violet it replaces, so nothing reads as a leftover. */
+        terracotta: {
           DEFAULT: 'hsl(var(--accent))',
           fill: 'hsl(var(--accent-fill))',
         },
@@ -59,30 +61,38 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
-      /* One face for the whole site — display, body and the label voice that used to
-         be mono. The fallbacks differ per role because they are what a reader sees
-         while the font loads, or if it never does: a condensed grotesque behind the
-         first two, a real monospace behind the third so the rails and the form
-         labels keep their rhythm rather than collapsing. */
+      /*  Three faces, three jobs — the structure the reference runs on, and the
+          reason it reads as an atelier rather than a template.
+
+          `sans`/`display` is Archivo: the grotesque that does all the structural
+          work. `serif` is Bodoni Moda: a true didone, used for the wordmark and the
+          two or three accent words a sentence turns on. `script` is Ballet: the
+          Spencerian that titles each section.
+
+          All three are OFL. The face they replace, OPTI Univers Sixty Seven, is an
+          unlicensed Univers clone that was shipping on a public URL — and Archivo is
+          the identity system's own face, so this is a restoration, not a third
+          choice. */
       fontFamily: {
-        display: ['"OPTI Univers"', '"Arial Narrow"', 'Helvetica', 'system-ui', 'sans-serif'],
-        sans: ['"OPTI Univers"', '"Arial Narrow"', '-apple-system', 'BlinkMacSystemFont', 'Helvetica', 'Arial', 'sans-serif'],
-        mono: ['"OPTI Univers"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        display: ['Archivo', 'Helvetica Neue', 'Helvetica', 'Arial', 'system-ui', 'sans-serif'],
+        sans: ['Archivo', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        serif: ['"Bodoni Moda"', 'Didot', '"Bodoni MT"', 'Georgia', 'serif'],
+        script: ['Ballet', '"Snell Roundhand"', '"Apple Chancery"', 'cursive'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
-      /* `tracking-tight` is Tailwind's -0.025em, set for a normal-width grotesque.
-         Univers 67 is condensed — the letters are already close, and pulling them
-         tighter fills the counters in and turns the display sizes into a wall. Zero
-         here retunes every `tracking-tight` on the site at once, which is why the
-         headings use the scale rather than one-off bracket values. */
+      /* Archivo is a normal-width grotesque, so `tracking-tight` means something
+         again — the condensed face that forced this to 0 is gone. The reference sets
+         display type at roughly -0.05em, which is what `track-display` applies; this
+         is the gentler step for everything below heading size. */
       letterSpacing: {
-        tight: '0em',
+        tight: '-0.02em',
       },
       /* Two steps past the heading scale, for the three places the body is meant to
          shout: the pinned intro sentence, the work index and the contact address.
          Named rather than repeated as bracket clamps so they stay one decision. */
       fontSize: {
-        mega: ['clamp(2.75rem, 8vw, 7rem)', { lineHeight: '0.94' }],
-        index: ['clamp(2rem, 6vw, 5rem)', { lineHeight: '1' }],
+        mega: ['clamp(2.75rem, 7.5vw, 6.5rem)', { lineHeight: '0.95' }],
+        index: ['clamp(1.75rem, 4.4vw, 3.75rem)', { lineHeight: '1.04' }],
       },
       transitionTimingFunction: {
         /* the site's one easing curve — a long, late settle */

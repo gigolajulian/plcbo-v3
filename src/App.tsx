@@ -1,5 +1,4 @@
 import { Cursor } from '@/components/cursor';
-import { SectionRail } from '@/components/section-rail';
 import { Clients } from '@/components/sections/clients';
 import { Connect } from '@/components/sections/connect';
 import { Footer } from '@/components/sections/footer';
@@ -19,12 +18,12 @@ export default function App() {
     <>
       <Cursor />
       <Nav />
-      <SectionRail />
 
       <main>
         <LiquidMetalHero
           title="PLCBO"
           subtitle="Visual identity, photography, film and digital design. Working out of the Bay Area since 2018."
+          statement="The whole picture, in-house."
           primaryCtaLabel="Start a project"
           secondaryCtaLabel="See the work"
           onPrimaryCtaClick={() => scrollTo('connect')}

@@ -46,7 +46,8 @@ export function Studio() {
     <section id="studio" className="scroll-mt-24 py-26">
       <div className="shell">
         <SectionHead
-          label="Who we are"
+          index="03"
+          label="Atelier"
           title="Studio"
           lede="A small studio in the Bay Area. We shoot, design and build in-house."
         />

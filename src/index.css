@@ -2,70 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/*  The typeface.
- *
- *  Kept under src/ rather than public/ so Vite rewrites and hashes the URL: it gets
- *  cache-busting for nothing, and it cannot repeat the base-path bug that took the
- *  first deploy down — GitHub Pages serves this site from /<repo>/, so a hard-coded
- *  /fonts/… would 404 there exactly as /mark.svg did.
- *
- *  `font-weight: 100 900` on a single-weight face is deliberate. Univers 67 is Bold
- *  Condensed and there is only this one cut, so every `font-semibold` on the page
- *  would otherwise make the browser synthesise a bold by smearing outlines that are
- *  already heavy. Claiming the whole range maps every weight to this file and turns
- *  synthesis off; the weight utilities stay in the markup and simply stop meaning
- *  anything, which is reversible if a second cut ever turns up.
- */
-@font-face {
-  font-family: 'OPTI Univers';
-  src: url('./fonts/opti-univers-67.otf') format('opentype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 /*  PLCBO v3 — tokens
- *  The shadcn variables are not generic slate here: every one of them is bound to
- *  the dark cut's palette, so `bg-background` / `text-foreground` in the stock
- *  shadcn components land on PLCBO colours without a single override.
  *
- *  The accent is held at 72% saturation on purpose — 100% is the loudest tell of
- *  a generated palette. --accent-fill is the deeper step the filled button needs
- *  for white to clear AA (white on --accent alone is only 3.69:1).
+ *  The site is light now. That is not a tweak to the dark cut, it is its
+ *  replacement: the reference Julian pinned is a light atelier page, and the near-
+ *  black-plus-one-glowing-accent arrangement the site used to run is both the thing
+ *  he was reacting against and one of the two or three looks every generated
+ *  interface converges on.
+ *
+ *  The single most important value here is --ink. It is #434343, not black. A soft
+ *  charcoal on a light ground is what separates an expensive editorial page from a
+ *  default one: pure black on near-white is a contrast shout nobody asked for, and
+ *  it makes photographs look washed out by comparison. Every reading colour on this
+ *  page is a step down from that charcoal, never up to black.
+ *
+ *  The accent is terracotta — the identity system's own accent, restored. v1/v2/v3
+ *  ran a violet instead, which was a deliberate departure from brand system v1.0
+ *  against a dark reference screenshot. That reference is gone, so the departure has
+ *  nothing left to serve. The system's rule comes back with the colour: under 5% of
+ *  any layout, one element at a time, never on the mark and never over an image.
  */
 @layer base {
   :root {
-    --background: 240 11% 4%;          /* #08080a */
-    --foreground: 240 10% 96%;         /* #f4f4f6 */
+    --background: 60 5% 96%;           /* #f4f4f3 — neutral light, deliberately not cream */
+    --foreground: 0 0% 26%;            /* #434343 — the soft charcoal, never #000 */
 
-    --card: 240 8% 5%;                 /* #0c0c0e */
-    --card-foreground: 240 10% 96%;
-    --popover: 240 8% 5%;
-    --popover-foreground: 240 10% 96%;
+    --card: 0 0% 100%;                 /* white cards sit *above* the ground */
+    --card-foreground: 0 0% 26%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 26%;
 
-    --primary: 240 10% 96%;
-    --primary-foreground: 240 11% 4%;
+    --primary: 0 0% 22%;               /* #383838 — the dark panel / filled button */
+    --primary-foreground: 60 5% 96%;
 
-    --secondary: 240 8% 8%;            /* #121215 */
-    --secondary-foreground: 240 10% 96%;
+    --secondary: 60 3% 92%;            /* #ebebe9 — a half-step down from the ground */
+    --secondary-foreground: 0 0% 26%;
 
-    --muted: 240 8% 8%;
-    --muted-foreground: 240 5% 62%;    /* #9a9aa4 */
+    --muted: 60 3% 92%;
+    --muted-foreground: 0 0% 54%;      /* #8a8a8a */
 
-    --accent: 252 72% 68%;             /* #8a73e8 */
-    --accent-foreground: 240 11% 4%;
-    --accent-fill: 252 72% 62%;        /* #7458e4 — filled button ground */
+    --accent: 13 59% 57%;              /* #d26e52 — terracotta, identity system v1.0 */
+    --accent-foreground: 60 5% 96%;
+    --accent-fill: 13 59% 50%;         /* the deeper step white needs to clear AA */
 
-    --destructive: 0 100% 71%;         /* #ff6b6b */
-    --destructive-foreground: 240 11% 4%;
+    --destructive: 0 62% 48%;
+    --destructive-foreground: 60 5% 96%;
 
-    --border: 240 3% 12%;              /* rgba(255,255,255,.085) over the ground */
-    --input: 240 3% 12%;
-    --ring: 252 72% 68%;
+    --border: 60 3% 87%;               /* #dfdfdc — a hairline, not a line */
+    --input: 60 3% 87%;
+    --ring: 13 59% 57%;
 
-    --ink: 240 10% 96%;
-    --ink-2: 240 5% 62%;
-    --ink-3: 240 4% 50%;               /* #7a7a85 — 4.72:1, clears AA at 10-11px */
+    --ink: 0 0% 26%;                   /* #434343 */
+    --ink-2: 0 0% 37%;                 /* #5e5e5e */
+    --ink-3: 0 0% 54%;                 /* #8a8a8a — 3.5:1, labels only, never body */
 
     --radius: 0.5rem;
   }
@@ -78,9 +67,8 @@
     scroll-behavior: smooth;
     scroll-padding-top: 96px;
     -webkit-tap-highlight-color: transparent;
-    /* Tells the browser the page is dark, so the scrollbar and any native control
-       it draws for us come up dark too rather than white against #08080a. */
-    color-scheme: dark;
+    /* The page is light again, so native controls and the scrollbar follow it. */
+    color-scheme: light;
   }
 
   body {
@@ -101,7 +89,7 @@
   }
 
   ::selection {
-    background: hsl(var(--accent) / 0.24);
+    background: hsl(var(--accent) / 0.22);
     color: hsl(var(--foreground));
   }
 
@@ -117,13 +105,57 @@
 }
 
 @layer components {
-  /* the mono eyebrow — the technical voice, used for labels and credits only */
+  /*  The label voice: "+ (Atelier)".
+   *
+   *  Not the tracked uppercase mono the dark cut used. The reference marks every
+   *  section with a low-contrast sentence-case parenthetical led by a plus, and it
+   *  works because it reads as an annotation on the page rather than a heading
+   *  competing with one. The plus is drawn by the rule so no section has to remember
+   *  it. */
   .eyebrow {
-    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3;
+    @apply flex items-center gap-2 text-[13px] font-normal tracking-[-0.01em] text-ink-3;
+  }
+  .eyebrow::before {
+    content: '+';
+    @apply text-[13px] leading-none;
+  }
+
+  /*  The section title: Spencerian script at display size, with its index.
+   *  Ballet is an optical-size variable face; at this scale it wants the large
+   *  optical size or the hairlines break up. */
+  .section-title {
+    @apply font-script text-ink;
+    font-variation-settings: 'opsz' 72;
+    font-size: clamp(4rem, 13vw, 11rem);
+    line-height: 0.82;
   }
 
   .shell {
-    @apply mx-auto w-full max-w-[1200px] px-6 sm:px-10 lg:px-16;
+    @apply mx-auto w-full max-w-[1320px] px-6 sm:px-10 lg:px-16;
+  }
+
+  /*  The two buttons.
+   *
+   *  The reference's primary action is a small dark pill with the label in caps and
+   *  an arrow — deliberately modest, because on a page this quiet a large filled
+   *  button is the only loud thing and it reads as an ad. The glass pills this
+   *  replaces were built for a near-black ground and are invisible on a light one:
+   *  a backdrop blur over #f4f4f3 blurs nothing. */
+  .pill-dark {
+    @apply inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3
+           text-[12px] font-medium uppercase tracking-[0.1em] text-primary-foreground
+           transition-colors duration-300 hover:bg-ink;
+  }
+  .pill-ghost {
+    @apply inline-flex items-center gap-2 rounded-full border border-ink/25 px-6 py-3
+           text-[12px] font-medium uppercase tracking-[0.1em] text-ink
+           transition-colors duration-300 hover:border-ink/60 hover:bg-ink/5;
+  }
+
+  /*  The ruled row — the reference's one repeating structure, and the honest way to
+   *  show seven clients instead of padding a twelve-cell grid with four logos. */
+  .rule-row {
+    @apply grid items-center gap-6 border-t border-border py-6;
   }
 }
 
@@ -135,20 +167,28 @@
     text-wrap: pretty;
   }
 
-  /* film grain — one tileable SVG noise, no image request */
+  /*  Display type is set tight. Archivo is a normal-width grotesque, so unlike the
+   *  condensed face this replaces it genuinely wants negative tracking at size —
+   *  the reference runs about -0.05em on everything above 48px. */
+  .track-display {
+    letter-spacing: -0.045em;
+  }
+
+  /* film grain — one tileable SVG noise, no image request. Lighter on a light
+     ground: multiply rather than overlay, or it reads as dirt. */
   .grain::after {
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.05;
-    mix-blend-mode: overlay;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 }
 
-/* Motion is opt-in. Everything below animates transform/opacity/filter only, and
-   all of it collapses to a static frame when the reader asks for less motion. */
+/* Motion is opt-in. Everything animates transform/opacity/filter only, and all of it
+   collapses to a static frame when the reader asks for less motion. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

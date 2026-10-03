@@ -3,41 +3,13 @@
 import { motion, useReducedMotion } from 'framer-motion';
 
 import { MetalMark } from '@/components/metal-mark';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-/* Glass, over metal.
- *
- * Four things together, and it stops working if any of them is dropped: a heavy backdrop
- * blur so the metal behind smears rather than showing through legibly; a saturation lift
- * so what does come through keeps its colour instead of going grey; a hairline top-edge
- * inset highlight, which is the specular catch that makes a pane read as a solid object
- * rather than a translucent rectangle; and a soft drop shadow so it sits above the metal
- * instead of being painted onto it.
- *
- * The two buttons differ only in how much light they hold, which is what keeps the
- * primary action primary now that neither is a solid fill. */
-const GLASS =
-  'rounded-full border backdrop-blur-2xl backdrop-saturate-150 ' +
-  'transition-[background-color,border-color] duration-300';
-
-const GLASS_PRIMARY =
-  'border-white/25 bg-white/[0.18] text-foreground hover:border-white/40 hover:bg-white/[0.26]';
-
-const GLASS_SECONDARY =
-  'border-white/15 bg-white/[0.07] text-foreground hover:border-white/30 hover:bg-white/[0.13]';
-
-/* The shadows go in a style attribute, not a Tailwind arbitrary value. `shadow-[…]` with
- * two shadows and rgba() commas inside silently generates nothing — the computed
- * box-shadow came back as Tailwind's empty default and the specular edge, the part that
- * does the actual work, was simply absent. */
-const glassShadow = (specular: number, drop: number, spread: number) =>
-  `inset 0 1px 0 rgba(255,255,255,${specular}), 0 ${drop}px ${spread}px rgba(0,0,0,0.45)`;
 
 export interface LiquidMetalHeroProps {
   /** Carried by the metal visually; kept in the DOM for screen readers and search. */
   title: string;
   subtitle?: string;
+  statement: string;
   primaryCtaLabel: string;
   secondaryCtaLabel?: string;
   onPrimaryCtaClick: () => void;
@@ -46,17 +18,26 @@ export interface LiquidMetalHeroProps {
 }
 
 /**
- * The first screen: the mark, in metal, and the two CTAs.
+ * The first screen.
  *
- * Exactly one viewport tall. It used to be a 210vh runway holding a sticky screen, so
- * that a fixed object beneath the page had room to melt out of the mark and into the
- * wordmark as you scrolled — which meant two screens of content cost three and a half
- * screens of scrolling. The mark and the wordmark are now simply two screens, each
- * carrying its own shape, and the runway is gone with the transition it existed for.
+ * The arrangement is the reference's: the object bleeds off the right edge at the top
+ * of the screen, and the statement sits low and left, where the eye lands last and
+ * stays. The old version centred the mark and put two glass buttons under it — a
+ * composition that gave the page no reading order at all, because a centred object
+ * has no second place to go.
+ *
+ * The mark survived the redesign on purpose. Two of the directions Julian rejected
+ * retired it, and it is the one piece of this site that is genuinely his: the
+ * statement is what changed, not the object.
+ *
+ * On a light ground the chrome reads as a grey solid rather than the glowing thing it
+ * was on near-black, which is the right register here — it is an object on a page now,
+ * not the light source of one.
  */
 export default function LiquidMetalHero({
   title,
   subtitle,
+  statement,
   primaryCtaLabel,
   secondaryCtaLabel,
   onPrimaryCtaClick,
@@ -64,60 +45,73 @@ export default function LiquidMetalHero({
   className,
 }: LiquidMetalHeroProps) {
   const reduceMotion = useReducedMotion();
+  const rise = reduceMotion
+    ? {}
+    : { initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 } };
 
   return (
     <section
       id="home"
-      className={cn('relative isolate flex h-[100svh] flex-col justify-end', className)}
+      className={cn(
+        'relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden pb-[clamp(2.5rem,7vh,5rem)] pt-32',
+        className
+      )}
     >
       <h1 className="sr-only">
         {title}
         {subtitle ? ' — ' + subtitle : ''}
       </h1>
 
-      {/* Centred, and the subject of its own screen. It answers the pointer: tilts
-          toward it, turns on the spot when dragged, ripples from wherever it is
-          clicked. */}
-      <MetalMark mask="/mark-mask.png" scale={0.49} compactScale={0.74} y={-0.02} primary />
+      {/* Parked hard right and lifted above centre so the statement below it is never
+          crowded. It runs off the edge deliberately: an object fully inside the frame
+          reads as an illustration, one that leaves reads as a thing the page is a
+          window onto. */}
+      <MetalMark
+        mask="/mark-mask.png"
+        scale={0.46}
+        compactScale={0.56}
+        fx={1}
+        px={90}
+        y={-0.2}
+        compactY={-0.26}
+        primary
+      />
 
-      {/* The metal is the page here, so there is no full-field scrim over it. This is
-          the one exception: a short vignette at the foot of the screen, so the CTAs sit
-          on a settled ground however bright the frame under them runs. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-background via-background/75 to-transparent" />
+      <div className="shell relative z-10">
+        <motion.p
+          className="eyebrow"
+          {...rise}
+          transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        >
+          (Atelier)
+        </motion.p>
 
-      <motion.div
-        className="relative flex justify-center px-6 pb-14 sm:pb-16"
-        initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button
-              onClick={onPrimaryCtaClick}
-              size="lg"
-              className={cn('h-12 px-8 text-[15px] font-medium', GLASS, GLASS_PRIMARY)}
-              style={{ boxShadow: glassShadow(0.45, 10, 34) }}
-            >
-              {primaryCtaLabel}
-            </Button>
-          </motion.div>
+        <motion.p
+          className="mt-5 max-w-[22ch] font-display text-mega font-medium track-display text-ink sm:max-w-[16ch]"
+          {...rise}
+          transition={{ duration: 0.8, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {statement}
+        </motion.p>
+
+        <motion.div
+          className="mt-[clamp(1.75rem,4vh,2.75rem)] flex flex-wrap items-center gap-3"
+          {...rise}
+          transition={{ duration: 0.7, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <button type="button" onClick={onPrimaryCtaClick} className="pill-dark">
+            {primaryCtaLabel}
+            <span aria-hidden="true">→</span>
+          </button>
 
           {secondaryCtaLabel && onSecondaryCtaClick && (
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Button
-                onClick={onSecondaryCtaClick}
-                variant="outline"
-                size="lg"
-                className={cn('h-12 px-8 text-[15px] font-medium', GLASS, GLASS_SECONDARY)}
-                style={{ boxShadow: glassShadow(0.25, 8, 28) }}
-              >
-                {secondaryCtaLabel}
-              </Button>
-            </motion.div>
+            <button type="button" onClick={onSecondaryCtaClick} className="pill-ghost">
+              {secondaryCtaLabel}
+              <span aria-hidden="true">→</span>
+            </button>
           )}
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </section>
   );
 }

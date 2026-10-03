@@ -49,10 +49,11 @@ const SERVICES = [
  */
 export function Services() {
   return (
-    <section id="services" className="scroll-mt-24 py-32">
+    <section id="services" className="scroll-mt-24 py-[clamp(4rem,12vh,8rem)]">
       <div className="shell">
         <SectionHead
-          label="What we do"
+          index="02"
+          label="Disciplines"
           title="Services"
           lede="Six things we do. Most projects use three or four of them."
         />
