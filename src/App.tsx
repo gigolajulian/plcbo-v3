@@ -6,7 +6,7 @@ import { Nav } from '@/components/sections/nav';
 import { Services } from '@/components/sections/services';
 import { Studio } from '@/components/sections/studio';
 import { Work } from '@/components/sections/work';
-import LiquidMetalHero from '@/components/ui/liquid-metal-hero';
+import Hero from '@/components/ui/hero';
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -18,7 +18,7 @@ export default function App() {
       <Nav />
 
       <main>
-        <LiquidMetalHero
+        <Hero
           title="PLCBO"
           subtitle="Visual identity, photography, film and digital design. Working out of the Bay Area since 2018."
           statement="The whole picture, in-house."
