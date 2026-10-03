@@ -1,5 +1,6 @@
 import { asset } from '@/lib/asset';
 import { Reveal } from '@/components/reveal';
+import { Swap } from '@/components/swap';
 
 type Client = {
   name: string;
@@ -51,11 +52,11 @@ export function Clients() {
           {CLIENTS.map((client, i) => (
             <li
               key={client.name}
-              className="rule-row grid-cols-[1fr_auto] gap-x-6 sm:grid-cols-[1fr_11rem_7rem] last:border-b"
+              className="group rule-row grid-cols-[1fr_auto] gap-x-6 sm:grid-cols-[1fr_11rem_7rem] last:border-b"
             >
               <Reveal delay={Math.min(i, 3)}>
                 <span className="block font-display text-index font-normal track-display text-ink">
-                  {client.name}
+                  <Swap text={client.name} />
                 </span>
               </Reveal>
 

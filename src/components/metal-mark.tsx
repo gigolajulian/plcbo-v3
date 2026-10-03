@@ -287,7 +287,8 @@ export function MetalMark({
           className="absolute inset-0"
           style={{
             transform:
-              `translate(calc(${placeFx} * 50% + ${placePx}px), ${(placeY * 100).toFixed(2)}%) ` +
+              `translate(calc(${placeFx} * 50% ${placePx < 0 ? '-' : '+'} ${Math.abs(placePx)}px), ` +
+              `${(placeY * 100).toFixed(2)}%) ` +
               `translateY(${rise.toFixed(1)}px) ` +
               `rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg) ` +
               `scale(${push.toFixed(4)})`,

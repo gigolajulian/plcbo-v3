@@ -152,6 +152,73 @@
            transition-colors duration-300 hover:border-ink/60 hover:bg-ink/5;
   }
 
+  /*  The row hover — see components/swap.tsx for why it is shaped this way.
+   *
+   *  The track carries both copies and moves once; `overflow: hidden` on the parent is
+   *  what makes the outgoing line leave rather than pile up.
+   *
+   *  Only the first copy is in flow. That is the whole trick: a clip box with two
+   *  in-flow lines in it has no height to clip to and simply grows to fit both, which
+   *  printed every name on the page twice. The incoming copy is parked a line below
+   *  instead, outside the box, so the box reserves exactly one line and the track
+   *  travels a full 100%.
+   *
+   *  The track is the positioned ancestor rather than the box, so the parked copy is
+   *  measured against the thing that moves. Left on the box it would re-anchor mid
+   *  hover, when the track's own transform turns it into a containing block.
+   *
+   *  `vertical-align: bottom` matters: an inline-block with overflow hidden sits on the
+   *  text baseline by default, which drops the whole row by its own descender depth the
+   *  moment this is applied. */
+  .swap {
+    @apply inline-block overflow-hidden align-bottom;
+  }
+  .swap-track {
+    @apply relative block;
+    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .swap-next {
+    @apply absolute left-0 top-full;
+    white-space: nowrap;
+  }
+  .group:hover .swap-track,
+  .group:focus-visible .swap-track {
+    transform: translateY(-100%);
+  }
+
+  .swap-arrow {
+    @apply inline-block overflow-hidden align-middle;
+    width: 1.1em;
+  }
+  .swap-arrow-inner {
+    @apply block;
+    transform: translateX(-130%);
+    opacity: 0;
+    transition:
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.3s linear;
+  }
+  .group:hover .swap-arrow-inner,
+  .group:focus-visible .swap-arrow-inner {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  /*  A reader who asked for less motion gets the end state, not a frozen start:
+   *  the global reduced-motion rule collapses durations to 0.01ms, which would leave
+   *  the arrow sitting at -130% and invisible until hovered, and snap the swap. Here
+   *  the swap simply does not move and the arrow is always present. */
+  @media (prefers-reduced-motion: reduce) {
+    .group:hover .swap-track,
+    .group:focus-visible .swap-track {
+      transform: none;
+    }
+    .swap-arrow-inner {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
   /*  The ruled row — the reference's one repeating structure, and the honest way to
    *  show seven clients instead of padding a twelve-cell grid with four logos. */
   .rule-row {
@@ -202,9 +269,3 @@
   }
 }
 
-/* The pointer is drawn by <Cursor />, so the native one steps aside — but only
-   while that component is actually mounted and driving it. */
-html.cursor-ring,
-html.cursor-ring * {
-  cursor: none;
-}

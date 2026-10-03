@@ -65,13 +65,18 @@ export default function LiquidMetalHero({
       {/* Parked hard right and lifted above centre so the statement below it is never
           crowded. It runs off the edge deliberately: an object fully inside the frame
           reads as an illustration, one that leaves reads as a thing the page is a
-          window onto. */}
+          window onto. It should leave by about a quarter, not two thirds: the object
+          box is a square of `scale x the container's longer edge` with the mask fitted
+          inside, so at 0.46 on a 1265px window the mark is 582px wide and sits centred
+          in a full-width canvas — `fx: 1` alone pushed its left edge to 1063 and put
+          65% of it past the window. The offset is in pixels against that, not a
+          fraction, because the copy it has to clear lives in a capped shell. */}
       <MetalMark
         mask="/mark-mask.png"
         scale={0.46}
         compactScale={0.56}
         fx={1}
-        px={90}
+        px={-230}
         y={-0.2}
         compactY={-0.26}
         primary

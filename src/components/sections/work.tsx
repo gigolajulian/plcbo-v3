@@ -8,6 +8,7 @@ import {
 } from 'framer-motion';
 
 import { Reveal } from '@/components/reveal';
+import { Swap, SwapArrow } from '@/components/swap';
 import { SectionHead } from '@/components/sections/section-head';
 import { asset } from '@/lib/asset';
 import { cn } from '@/lib/utils';
@@ -122,23 +123,26 @@ export function Work() {
               <div className="shell flex items-baseline gap-6 py-8 sm:gap-10">
                 <span
                   className={cn(
-                    'font-mono text-[11px] tracking-[0.18em] transition-colors duration-500',
+                    'text-[12px] tabular-nums transition-colors duration-500',
                     hovered === i ? 'text-accent' : 'text-ink-3',
                   )}
                 >
                   {String(i + 1).padStart(2, '0')}
                 </span>
 
-                {/* The title is the only thing that moves. A row where four elements
-                    all slide on hover reads as a wobble, not a response. */}
-                <h3 className="flex-1 font-display text-index font-semibold uppercase tracking-tight text-ink-2 transition-[color,transform] duration-500 ease-smooth group-hover:translate-x-3 group-hover:text-foreground motion-reduce:group-hover:translate-x-0">
-                  {project.title}
+                {/* The title rolls over to a copy of itself rather than sliding
+                    sideways — the reference's move, and the better one: a translate
+                    has to stop somewhere arbitrary, where a swap has an end state the
+                    row returns from cleanly when the pointer leaves mid-animation. */}
+                <h3 className="flex-1 font-display text-index font-semibold uppercase tracking-tight text-ink-2 transition-colors duration-500 group-hover:text-ink">
+                  <Swap text={project.title} />
                 </h3>
 
                 <span className="hidden max-w-[22ch] text-right leading-snug text-ink-3 md:block">
                   {project.tags}
                 </span>
-                <span className="eyebrow shrink-0">{project.year}</span>
+                <span className="shrink-0 text-[13px] text-ink-3">{project.year}</span>
+                <SwapArrow className="shrink-0 text-ink" />
               </div>
 
               {/* No hover to reveal it with, so the photograph is simply here. A
@@ -165,10 +169,10 @@ export function Work() {
         <Reveal delay={1}>
           <a
             href="#connect"
-            className="mt-16 inline-flex min-h-[44px] items-center gap-2 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-2 transition-colors hover:text-foreground"
+            className="group mt-16 inline-flex min-h-[44px] items-center gap-2 py-3 text-[12px] uppercase tracking-[0.1em] text-ink-2 transition-colors hover:text-ink"
           >
-            View all projects
-            <span aria-hidden="true">→</span>
+            <Swap text="View all projects" />
+            <SwapArrow />
           </a>
         </Reveal>
       </div>

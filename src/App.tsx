@@ -1,4 +1,3 @@
-import { Cursor } from '@/components/cursor';
 import { Clients } from '@/components/sections/clients';
 import { Connect } from '@/components/sections/connect';
 import { Footer } from '@/components/sections/footer';
@@ -16,7 +15,6 @@ function scrollTo(id: string) {
 export default function App() {
   return (
     <>
-      <Cursor />
       <Nav />
 
       <main>
